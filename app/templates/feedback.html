@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Форма обратной связи</h1>
+<form method="post" class="form">
+    <label>ФИО<input name="full_name" value="{{ current_user.full_name }}" required></label>
+    <label>Email<input type="email" name="email" value="{{ current_user.email }}" required></label>
+    <label>Тема<input name="subject" required></label>
+    <label>Сообщение<textarea name="message" required></textarea></label>
+    <button>Отправить</button>
+</form>
+{% endblock %}
