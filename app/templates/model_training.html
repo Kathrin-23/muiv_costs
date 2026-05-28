@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Обучение модели</h1>
+<form method="post" class="form">
+    <label>Алгоритм
+        <select name="model_name">
+            <option value="random_forest">Случайный лес</option>
+            <option value="gradient_boosting">Градиентный бустинг</option>
+            <option value="ridge">Гребневая регрессия</option>
+        </select>
+    </label>
+    <button>Обучить модель</button>
+</form>
+{% if metrics %}
+<h2>Метрики последнего обучения</h2>
+<table>{% for k,v in metrics.items() %}<tr><th>{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}</table>
+{% endif %}
+{% if cv_metrics %}
+<h2>Кросс-валидация</h2>
+<table>{% for k,v in cv_metrics.items() %}<tr><th>{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}</table>
+{% endif %}
+{% endblock %}
