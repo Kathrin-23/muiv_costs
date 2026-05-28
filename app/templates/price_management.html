@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Работа с ценами</h1>
+<form method="get" class="filter">
+    <label>Образовательная услуга
+        <select name="service_id">
+            {% for s in services %}
+                <option value="{{ s.id }}" {% if selected_service and selected_service.id == s.id %}selected{% endif %}>{{ s.full_title }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <button>Показать</button>
+</form>
+{% if selected_service %}
+<section class="cards">
+    <div class="card"><b>{{ '%.2f'|format(stats.mean) }}</b><span>средняя цена</span></div>
+    <div class="card"><b>{{ '%.2f'|format(stats.min) }}</b><span>минимальная цена</span></div>
+    <div class="card"><b>{{ '%.2f'|format(stats.max) }}</b><span>максимальная цена</span></div>
+    <div class="card"><b>{{ selected_service.study_format }}</b><span>формат обучения</span></div>
+</section>
+<h2>Добавление текущей цены</h2>
+<form method="post" class="grid-form">
+    <input type="hidden" name="service_id" value="{{ selected_service.id }}">
+    <label>Год<input name="year" value="{{ project_year }}" required></label>
+    <label>Цена<input name="price" value="{{ selected_service.current_price }}" required></label>
+    <label>Скидка, %<input name="discount_percent" value="0" required></label>
+    <label>Количество заявок<input name="student_count" value="0" required></label>
+    <button>Сохранить цену</button>
+</form>
+<h2>История и динамика цен</h2>
+<table>
+    <tr><th>Год</th><th>Цена</th><th>Скидка</th><th>Заявки</th><th>Изменение к прошлому году</th></tr>
+    {% for p in history %}
+        {% set previous = history[loop.index0 - 1] if loop.index0 > 0 else none %}
+        <tr>
+            <td>{{ p.year }}</td>
+            <td>{{ '%.2f'|format(p.price) }}</td>
+            <td>{{ p.discount_percent }}%</td>
+            <td>{{ p.student_count }}</td>
+            <td>{% if previous %}{{ '%.2f'|format(p.price - previous.price) }}{% else %}0{% endif %}</td>
+        </tr>
+    {% endfor %}
+</table>
+<h2>Сравнение с конкурентами</h2>
+<table>
+    <tr><th>Год</th><th>Цена услуги</th><th>Средняя цена конкурентов</th><th>Отклонение</th></tr>
+    {% for c in competitors %}
+        {% set price = (history | selectattr('year', 'equalto', c.year) | list | first) %}
+        <tr><td>{{ c.year }}</td><td>{{ price.price if price else selected_service.current_price }}</td><td>{{ c.price }}</td><td>{{ ((price.price if price else selected_service.current_price) - c.price) | round(2) }}</td></tr>
+    {% else %}
+        <tr><td colspan="4">Данные конкурентов отсутствуют.</td></tr>
+    {% endfor %}
+</table>
+{% endif %}
+{% endblock %}
