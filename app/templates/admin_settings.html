@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block content %}<h1>Настройки системы</h1><form method="post" class="form">{% for s in settings %}<label>{{ s.key }}<input name="setting_{{ s.id }}" value="{{ s.value }}"><small>{{ s.description }}</small></label>{% endfor %}<button>Сохранить</button></form>{% endblock %}

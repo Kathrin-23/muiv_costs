@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Административная панель</h1>
+<section class="cards">
+    {% for k,v in metrics.items() %}
+        <div class="card"><b>{{ v }}</b><span>{{ k }}</span></div>
+    {% endfor %}
+</section>
+<div class="actions">
+    <a class="button" href="{{ url_for('admin_users') }}">Пользователи</a>
+    <a class="button ghost" href="{{ url_for('admin_roles') }}">Роли</a>
+    <a class="button ghost" href="{{ url_for('admin_programs') }}">Программы</a>
+    <a class="button ghost" href="{{ url_for('admin_services') }}">Услуги</a>
+    <a class="button ghost" href="{{ url_for('admin_datasets') }}">Датасеты</a>
+    <a class="button ghost" href="{{ url_for('admin_reports') }}">Отчеты</a>
+    <a class="button ghost" href="{{ url_for('admin_feedback') }}">Обращения</a>
+    <a class="button ghost" href="{{ url_for('admin_settings') }}">Настройки</a>
+</div>
+{% endblock %}
