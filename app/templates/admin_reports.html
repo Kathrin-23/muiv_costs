@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Управление отчетами</h1>
+<table>
+    <tr><th>Файл</th><th>Тип</th><th>Создал</th><th>Дата</th><th></th></tr>
+    {% for r in reports %}
+        <tr>
+            <td>{{ r.filename }}</td>
+            <td>{{ r.report_type }}</td>
+            <td>{{ r.created_by_user.full_name if r.created_by_user else 'система' }}</td>
+            <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+            <td><a href="{{ url_for('admin_delete_report', report_id=r.id) }}">удалить</a></td>
+        </tr>
+    {% else %}
+        <tr><td colspan="5">Сформированных отчетов нет.</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}

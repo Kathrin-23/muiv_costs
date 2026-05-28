@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Обращения пользователей</h1>
+<table>
+    <tr><th>Дата</th><th>ФИО</th><th>Email</th><th>Тема</th><th>Сообщение</th><th>Статус</th></tr>
+    {% for m in messages %}
+        <tr><td>{{ m.created_at.strftime('%d.%m.%Y %H:%M') }}</td><td>{{ m.full_name }}</td><td>{{ m.email }}</td><td>{{ m.subject }}</td><td>{{ m.message }}</td><td>{{ m.status }}</td></tr>
+    {% else %}
+        <tr><td colspan="6">Обращений пока нет.</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}
