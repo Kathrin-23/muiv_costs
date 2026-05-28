@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Управление образовательными услугами</h1>
+<form method="post" class="grid-form">
+    <select name="program_id">{% for p in programs %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select>
+    <input name="name" placeholder="Название услуги">
+    <input name="study_format" placeholder="Форма обучения">
+    <input name="region" placeholder="Регион">
+    <input name="current_price" placeholder="Текущая цена">
+    <button>Добавить</button>
+</form>
+<table>
+    <tr><th>Программа</th><th>Услуга</th><th>Уровень</th><th>Формат</th><th>Регион</th><th>Цена</th><th></th></tr>
+    {% for s in services %}
+        <tr>
+            <td>{{ s.program.name }}</td>
+            <td>{{ s.name }}</td>
+            <td>{{ s.program.education_level }}</td>
+            <td>{{ s.study_format }}</td>
+            <td>{{ s.region }}</td>
+            <td>{{ s.current_price }}</td>
+            <td><a href="{{ url_for('admin_edit_service', service_id=s.id) }}">редактировать</a> · <a href="{{ url_for('admin_delete_service', service_id=s.id) }}">удалить</a></td>
+        </tr>
+    {% endfor %}
+</table>
+{% endblock %}

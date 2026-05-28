@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Редактирование услуги</h1>
+<form method="post" class="grid-form">
+    <label>Программа<select name="program_id">{% for p in programs %}<option value="{{ p.id }}" {% if p.id == service.program_id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></label>
+    <label>Название услуги<input name="name" value="{{ service.name }}" required></label>
+    <label>Форма обучения<input name="study_format" value="{{ service.study_format }}" required></label>
+    <label>Регион<input name="region" value="{{ service.region }}" required></label>
+    <label>Текущая цена<input name="current_price" value="{{ service.current_price }}" required></label>
+    <label class="inline-check"><input type="checkbox" name="is_active" value="1" {% if service.is_active %}checked{% endif %}> Активна</label>
+    <button>Сохранить</button>
+</form>
+{% endblock %}
