@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Управление датасетами</h1>
+<div class="actions"><a class="button" href="{{ url_for('upload_dataset') }}">Загрузить датасет</a></div>
+<table>
+    <tr><th>Файл</th><th>Строк</th><th>Дата</th><th>Статус</th><th>Описание</th><th></th></tr>
+    {% for d in datasets %}
+        <tr><td>{{ d.original_name }}</td><td>{{ d.row_count }}</td><td>{{ d.uploaded_at.strftime('%d.%m.%Y %H:%M') }}</td><td>{{ d.status }}</td><td>{{ d.description }}</td><td><a href="{{ url_for('delete_dataset', dataset_id=d.id) }}">удалить</a></td></tr>
+    {% else %}
+        <tr><td colspan="6">Датасеты не загружены.</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}

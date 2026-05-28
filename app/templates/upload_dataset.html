@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Загрузка набора данных</h1>
+<p class="hint">Файл проверяется на обязательные столбцы, числовые поля очищаются, затем обработанная версия сохраняется для анализа и прогнозирования.</p>
+<form method="post" enctype="multipart/form-data" class="form">
+    <label>Файл CSV/XLSX<input type="file" name="dataset" accept=".csv,.xlsx" required></label>
+    <label>Описание<textarea name="description"></textarea></label>
+    <button>Загрузить</button>
+</form>
+<h2>Обязательные поля</h2>
+<p class="hint">Поддерживаются русские названия: Название услуги, Уровень образования, Направление подготовки, Форма обучения, Длительность обучения, Регион, Год, Текущая цена, Количество заявок, Средняя цена конкурентов, Скидка, Прогнозная цена.</p>
+<h2>Загруженные наборы</h2>
+<table>
+    <tr><th>Файл</th><th>Строк</th><th>Дата</th><th>Статус</th><th></th></tr>
+    {% for d in datasets %}
+        <tr>
+            <td>{{ d.original_name }}</td>
+            <td>{{ d.row_count }}</td>
+            <td>{{ d.uploaded_at.strftime('%d.%m.%Y %H:%M') }}</td>
+            <td>{{ d.status }}</td>
+            <td><a href="{{ url_for('delete_dataset', dataset_id=d.id) }}">удалить</a></td>
+        </tr>
+    {% else %}
+        <tr><td colspan="5">Наборы данных не загружены.</td></tr>
+    {% endfor %}
+</table>
+<h2>Просмотр обработанных данных</h2>
+<div class="table-scroll">
+<table>
+    <tr>{% for column in preview_columns %}<th>{{ column }}</th>{% endfor %}</tr>
+    {% for row in preview_rows %}
+        <tr>{% for column in preview_columns %}<td>{{ row[column] }}</td>{% endfor %}</tr>
+    {% else %}
+        <tr><td>Нет данных для просмотра.</td></tr>
+    {% endfor %}
+</table>
+</div>
+{% endblock %}

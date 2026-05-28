@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Загруженные данные</h1>
+<table>
+    <tr><th>Файл</th><th>Строк</th><th>Дата</th><th>Статус</th><th>Описание</th></tr>
+    {% for d in datasets %}
+        <tr><td>{{ d.original_name }}</td><td>{{ d.row_count }}</td><td>{{ d.uploaded_at.strftime('%d.%m.%Y %H:%M') }}</td><td>{{ d.status }}</td><td>{{ d.description }}</td></tr>
+    {% else %}
+        <tr><td colspan="5">Загруженных наборов данных нет.</td></tr>
+    {% endfor %}
+</table>
+<h2>Предпросмотр обработанного датасета</h2>
+<div class="table-scroll">
+<table>
+    <tr>{% for column in preview_columns %}<th>{{ column }}</th>{% endfor %}</tr>
+    {% for row in preview_rows %}
+        <tr>{% for column in preview_columns %}<td>{{ row[column] }}</td>{% endfor %}</tr>
+    {% else %}
+        <tr><td>Нет данных для предпросмотра.</td></tr>
+    {% endfor %}
+</table>
+</div>
+{% endblock %}
