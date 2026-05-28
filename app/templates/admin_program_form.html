@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Редактирование программы</h1>
+<form method="post" class="grid-form">
+    <label>Название<input name="name" value="{{ program.name }}" required></label>
+    <label>Уровень<input name="education_level" value="{{ program.education_level }}" required></label>
+    <label>Направление<input name="department" value="{{ program.department }}" required></label>
+    <label>Длительность<input name="duration_months" value="{{ program.duration_months }}" required></label>
+    <label>Описание<textarea name="description">{{ program.description or '' }}</textarea></label>
+    <button>Сохранить</button>
+</form>
+{% endblock %}

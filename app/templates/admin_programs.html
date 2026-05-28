@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Управление образовательными программами</h1>
+<form method="post" class="grid-form">
+    <input name="name" placeholder="Название">
+    <input name="education_level" placeholder="Уровень">
+    <input name="department" placeholder="Направление подготовки">
+    <input name="duration_months" placeholder="Длительность">
+    <textarea name="description" placeholder="Описание"></textarea>
+    <button>Добавить</button>
+</form>
+<table>
+    <tr><th>Название</th><th>Уровень</th><th>Направление</th><th>Длительность</th><th></th></tr>
+    {% for p in programs %}
+        <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ p.education_level }}</td>
+            <td>{{ p.department }}</td>
+            <td>{{ p.duration_months }}</td>
+            <td><a href="{{ url_for('admin_edit_program', program_id=p.id) }}">редактировать</a> · <a href="{{ url_for('admin_delete_program', program_id=p.id) }}">удалить</a></td>
+        </tr>
+    {% endfor %}
+</table>
+{% endblock %}
