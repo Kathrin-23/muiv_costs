@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Настройки профиля</h1>
+<form method="post" class="form">
+    <label>ФИО<input name="full_name" value="{{ current_user.full_name }}" required></label>
+    <label>Email<input type="email" name="email" value="{{ current_user.email }}" required></label>
+    <label>Новый пароль<input type="password" name="password" placeholder="Оставьте пустым, если менять не нужно"></label>
+    <button>Сохранить</button>
+</form>
+{% endblock %}
