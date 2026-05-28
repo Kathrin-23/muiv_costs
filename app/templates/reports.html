@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Отчеты и экспорт</h1>
+<div class="actions">
+    <a class="button" href="{{ url_for('export_xlsx') }}">Прогноз XLSX</a>
+    <a class="button ghost" href="{{ url_for('export_docx') }}">Прогноз DOCX</a>
+    <a class="button ghost" href="{{ url_for('export_dataset') }}">Анализ XLSX</a>
+    <a class="button ghost" href="{{ url_for('export_analysis_docx') }}">Анализ DOCX</a>
+</div>
+<h2>Сохраненные прогнозы</h2>
+<table>
+    <tr><th>Дата</th><th>Программа</th><th>Регион</th><th>Цена</th><th>Рекомендация</th></tr>
+    {% for f in forecasts %}
+        <tr><td>{{ f.created_at.strftime('%d.%m.%Y') }}</td><td>{{ f.program_name }}</td><td>{{ f.region }}</td><td>{{ '%.2f'|format(f.predicted_price) }}</td><td>{{ f.recommendation }}</td></tr>
+    {% else %}
+        <tr><td colspan="5">Нет сохраненных прогнозов.</td></tr>
+    {% endfor %}
+</table>
+<h2>История сформированных отчетов</h2>
+<table>
+    <tr><th>Файл</th><th>Тип</th><th>Дата</th></tr>
+    {% for r in report_files %}
+        <tr><td>{{ r.filename }}</td><td>{{ r.report_type }}</td><td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}</td></tr>
+    {% else %}
+        <tr><td colspan="3">Отчеты еще не формировались.</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}

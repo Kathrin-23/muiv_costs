@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Мои отчеты</h1>
+<div class="actions">
+    <a class="button" href="{{ url_for('reports') }}">Сформировать новый отчет</a>
+</div>
+<table>
+    <tr><th>Файл</th><th>Тип</th><th>Дата формирования</th></tr>
+    {% for r in reports %}
+        <tr><td>{{ r.filename }}</td><td>{{ r.report_type }}</td><td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}</td></tr>
+    {% else %}
+        <tr><td colspan="3">Отчеты еще не формировались.</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}
