@@ -1,0 +1,11 @@
+{
+  "mae": 4436.52,
+  "rmse": 6215.6,
+  "mape": 0.0396,
+  "r2": 0.9851,
+  "model_name": "random_forest",
+  "train_rows": 2620,
+  "test_rows": 740,
+  "dataset_rows": 3360,
+  "trained_at": "2026-05-21 15:28:49"
+}
