@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Личный кабинет</h1>
+<p>Пользователь: <b>{{ current_user.full_name }}</b>, роль: <b>{{ current_user.role.title }}</b>.</p>
+<section class="cards">
+    {% for k,v in metrics.items() %}
+        <div class="card"><b>{{ v }}</b><span>{{ k }}</span></div>
+    {% endfor %}
+</section>
+<div class="actions">
+    <a class="button" href="{{ url_for('user_forecasts') }}">Мои прогнозы</a>
+    <a class="button ghost" href="{{ url_for('user_reports') }}">Мои отчеты</a>
+    <a class="button ghost" href="{{ url_for('user_datasets') }}">Загруженные данные</a>
+    <a class="button ghost" href="{{ url_for('profile_settings') }}">Настройки профиля</a>
+    <a class="button ghost" href="{{ url_for('help_page') }}">Справка</a>
+</div>
+<h2>Последние прогнозы</h2>
+<table>
+    <tr><th>Дата</th><th>Программа</th><th>Регион</th><th>Цена</th></tr>
+    {% for f in latest_forecasts %}
+        <tr><td>{{ f.created_at.strftime('%d.%m.%Y') }}</td><td>{{ f.program_name }}</td><td>{{ f.region }}</td><td>{{ '%.2f'|format(f.predicted_price) }}</td></tr>
+    {% else %}
+        <tr><td colspan="4">Прогнозы пока не сформированы.</td></tr>
+    {% endfor %}
+</table>
+<h2>Последние датасеты</h2>
+<table>
+    <tr><th>Файл</th><th>Строк</th><th>Дата</th><th>Статус</th></tr>
+    {% for d in latest_datasets %}
+        <tr><td>{{ d.original_name }}</td><td>{{ d.row_count }}</td><td>{{ d.uploaded_at.strftime('%d.%m.%Y %H:%M') }}</td><td>{{ d.status }}</td></tr>
+    {% else %}
+        <tr><td colspan="4">Датасеты пока не загружены.</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}
