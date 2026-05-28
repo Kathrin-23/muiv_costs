@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Прогнозирование цены</h1>
+<form method="post" class="grid-form">
+    <label>Год<input name="year" value="2027" required></label>
+    <label>Регион<input name="region" value="Москва" required></label>
+    <label>Уровень<input name="education_level" value="бакалавриат" required></label>
+    <label>Программа<input name="program_name" value="Искусственный интеллект и анализ данных" required></label>
+    <label>Формат<input name="study_format" value="дистанционная" required></label>
+    <label>Длительность, мес.<input name="duration_months" value="48" required></label>
+    <label>Базовая цена<input name="base_price" value="150000" required></label>
+    <label>Цена конкурентов<input name="competitor_price" value="145000" required></label>
+    <label>Индекс спроса<input name="demand_index" value="72" required></label>
+    <label>Индекс зарплат<input name="salary_index" value="76" required></label>
+    <label>Расходы на продвижение<input name="advertising_spend" value="160000" required></label>
+    <label>Скидка, %<input name="discount_percent" value="8" required></label>
+    <label>Количество заявок<input name="student_count" value="75" required></label>
+    <button>Рассчитать прогноз</button>
+</form>
+{% if prediction %}
+<div class="result">
+    <h2>Результат</h2>
+    <p>Прогнозная цена: <b>{{ '%.2f'|format(prediction.predicted_price) }}</b> руб.</p>
+    <p>{{ prediction.recommendation }}</p>
+</div>
+<h2>Данные на вход модели</h2>
+<table>
+    {% for key, value in prediction.input.items() %}
+        <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+    {% endfor %}
+</table>
+{% endif %}
+{% if metrics %}
+<h2>Метрики качества последнего обучения</h2>
+<table>
+    <tr><th>MAE</th><td>{{ metrics.mae }}</td></tr>
+    <tr><th>RMSE</th><td>{{ metrics.rmse }}</td></tr>
+    <tr><th>R2</th><td>{{ metrics.r2 }}</td></tr>
+    <tr><th>Алгоритм</th><td>{{ metrics.model_name or 'random_forest' }}</td></tr>
+    <tr><th>Строк в датасете</th><td>{{ metrics.dataset_rows or '-' }}</td></tr>
+</table>
+{% endif %}
+{% endblock %}
