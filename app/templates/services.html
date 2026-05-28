@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Каталог образовательных услуг</h1>
+<form method="get" class="filter">
+    <label>Регион<select name="region"><option value="">Все регионы</option>{% for r in regions %}<option value="{{ r }}" {% if selected_region==r %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></label>
+    <label>Уровень<select name="education_level"><option value="">Все уровни</option>{% for level in levels %}<option value="{{ level }}" {% if selected_level==level %}selected{% endif %}>{{ level }}</option>{% endfor %}</select></label>
+    <label>Направление<select name="department"><option value="">Все направления</option>{% for department in departments %}<option value="{{ department }}" {% if selected_department==department %}selected{% endif %}>{{ department }}</option>{% endfor %}</select></label>
+    <label>Формат<select name="study_format"><option value="">Все форматы</option>{% for f in formats %}<option value="{{ f }}" {% if selected_format==f %}selected{% endif %}>{{ f }}</option>{% endfor %}</select></label>
+    <label>Цена до<input name="max_price" value="{{ max_price or '' }}" inputmode="numeric"></label>
+    <button>Фильтровать</button>
+</form>
+<table>
+    <tr><th>Программа</th><th>Уровень</th><th>Направление</th><th>Формат</th><th>Регион</th><th>Текущая цена</th><th></th></tr>
+    {% for s in services %}
+        <tr>
+            <td>{{ s.program.name }}</td>
+            <td>{{ s.program.education_level }}</td>
+            <td>{{ s.program.department }}</td>
+            <td>{{ s.study_format }}</td>
+            <td>{{ s.region }}</td>
+            <td>{{ '%.2f'|format(s.current_price) }}</td>
+            <td><a href="{{ url_for('service_card', service_id=s.id) }}">Открыть</a></td>
+        </tr>
+    {% else %}
+        <tr><td colspan="7">По выбранным условиям услуг не найдено.</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}

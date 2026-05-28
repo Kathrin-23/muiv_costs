@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ service.program.name }}</h1>
+<section class="cards">
+    <div class="card"><b>{{ service.program.education_level }}</b><span>уровень обучения</span></div>
+    <div class="card"><b>{{ service.study_format }}</b><span>формат</span></div>
+    <div class="card"><b>{{ service.program.duration_months }}</b><span>месяцев обучения</span></div>
+    <div class="card"><b>{{ '%.2f'|format(service.current_price) }}</b><span>текущая цена, руб.</span></div>
+</section>
+<p>{{ service.name }}. Направление: <b>{{ service.program.department }}</b>. Регион: <b>{{ service.region }}</b>.</p>
+<div class="actions">
+    <a class="button" href="{{ url_for('forecast_service', service_id=service.id) }}">Сформировать прогноз</a>
+    {% if current_user.is_analyst %}<a class="button ghost" href="{{ url_for('price_management', service_id=service.id) }}">Управлять ценами</a>{% endif %}
+</div>
+<h2>История цен</h2>
+<table>
+    <tr><th>Год</th><th>Цена</th><th>Скидка</th><th>Обучающиеся</th></tr>
+    {% for p in price_history %}
+        <tr><td>{{ p.year }}</td><td>{{ '%.2f'|format(p.price) }}</td><td>{{ p.discount_percent }}%</td><td>{{ p.student_count }}</td></tr>
+    {% endfor %}
+</table>
+<h2>Спрос и конкуренты</h2>
+<div class="split">
+    <table>
+        <tr><th>Год</th><th>Индекс спроса</th><th>Индекс зарплат</th><th>Продвижение</th></tr>
+        {% for d in demand %}
+            <tr><td>{{ d.year }}</td><td>{{ d.demand_index }}</td><td>{{ d.salary_index }}</td><td>{{ d.advertising_spend }}</td></tr>
+        {% endfor %}
+    </table>
+    <table>
+        <tr><th>Год</th><th>Конкурент</th><th>Цена</th><th>Источник</th></tr>
+        {% for c in competitors %}
+            <tr><td>{{ c.year }}</td><td>{{ c.competitor_name }}</td><td>{{ '%.2f'|format(c.price) }}</td><td>{{ c.source }}</td></tr>
+        {% endfor %}
+    </table>
+</div>
+<h2>Последние прогнозы</h2>
+<table>
+    <tr><th>Год</th><th>Цена</th><th>Рекомендация</th></tr>
+    {% for f in forecasts %}
+        <tr><td>{{ f.year }}</td><td>{{ '%.2f'|format(f.predicted_price) }}</td><td>{{ f.recommendation }}</td></tr>
+    {% else %}
+        <tr><td colspan="3">Нет прогнозов.</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}
