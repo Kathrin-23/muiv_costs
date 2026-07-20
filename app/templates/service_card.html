@@ -36,11 +36,11 @@
 </div>
 <h2>Последние прогнозы</h2>
 <table>
-    <tr><th>Год</th><th>Цена</th><th>Рекомендация</th></tr>
+    <tr><th>Год</th><th>Модель</th><th>Цена</th><th>Рекомендация</th></tr>
     {% for f in forecasts %}
-        <tr><td>{{ f.year }}</td><td>{{ '%.2f'|format(f.predicted_price) }}</td><td>{{ f.recommendation }}</td></tr>
+        <tr><td>{{ f.year }}</td><td>{{ f.model_name }}</td><td>{{ '%.2f'|format(f.predicted_price) }}</td><td>{{ f.recommendation }}</td></tr>
     {% else %}
-        <tr><td colspan="3">Нет прогнозов.</td></tr>
+        <tr><td colspan="4">Нет прогнозов.</td></tr>
     {% endfor %}
 </table>
 {% endblock %}

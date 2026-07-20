@@ -2,7 +2,7 @@
 {% block content %}
 <h1>Мои прогнозы</h1>
 <table>
-    <tr><th>Дата</th><th>Год</th><th>Программа</th><th>Формат</th><th>Регион</th><th>Прогнозная цена</th><th>Рекомендация</th></tr>
+    <tr><th>Дата</th><th>Год</th><th>Программа</th><th>Формат</th><th>Регион</th><th>Модель</th><th>Прогнозная цена</th><th>Рекомендация</th></tr>
     {% for f in forecasts %}
         <tr>
             <td>{{ f.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
@@ -10,11 +10,12 @@
             <td>{{ f.program_name }}</td>
             <td>{{ f.study_format }}</td>
             <td>{{ f.region }}</td>
+            <td>{{ f.model_name }}</td>
             <td>{{ '%.2f'|format(f.predicted_price) }}</td>
             <td>{{ f.recommendation }}</td>
         </tr>
     {% else %}
-        <tr><td colspan="7">У вас пока нет сохраненных прогнозов.</td></tr>
+        <tr><td colspan="8">У вас пока нет сохраненных прогнозов.</td></tr>
     {% endfor %}
 </table>
 {% endblock %}

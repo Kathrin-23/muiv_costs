@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect, text
 from werkzeug.security import generate_password_hash
 from config import Config
 
@@ -26,9 +27,27 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        ensure_schema_updates()
         seed_reference_data()
 
     return app
+
+
+def ensure_schema_updates():
+    """Добавить небольшие совместимые изменения без удаления существующей БД."""
+
+    inspector = inspect(db.engine)
+    if "forecast_results" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("forecast_results")}
+    if "model_name" not in columns:
+        db.session.execute(
+            text(
+                "ALTER TABLE forecast_results "
+                "ADD COLUMN model_name VARCHAR(80) NOT NULL DEFAULT 'random_forest'"
+            )
+        )
+        db.session.commit()
 
 
 @login_manager.user_loader

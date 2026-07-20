@@ -1,9 +1,17 @@
+"""Модели базы данных информационной системы.
+
+Основные сущности связывают пользователей, образовательные услуги, исходные
+наборы, результаты прогнозов и сформированные отчеты.
+"""
+
 from datetime import datetime
 from flask_login import UserMixin
 from app import db
 
 
 class Role(db.Model):
+    """Роль определяет уровень доступа пользователя к разделам системы."""
+
     __tablename__ = "roles"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -21,6 +29,8 @@ class Role(db.Model):
 
 
 class User(UserMixin, db.Model):
+    """Учетная запись пользователя с ролью и историей созданных материалов."""
+
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -64,6 +74,8 @@ class User(UserMixin, db.Model):
 
 
 class EducationalProgram(db.Model):
+    """Образовательная программа, общая для нескольких форм оказания услуги."""
+
     __tablename__ = "educational_programs"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -90,6 +102,8 @@ class EducationalProgram(db.Model):
 
 
 class EducationalService(db.Model):
+    """Конкретная услуга: программа, формат, регион и текущая стоимость."""
+
     __tablename__ = "educational_services"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -208,6 +222,8 @@ class CompetitorPrice(db.Model):
 
 
 class DatasetFile(db.Model):
+    """Метаданные загруженного локально или по URL набора данных."""
+
     __tablename__ = "dataset_files"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -230,6 +246,8 @@ class DatasetFile(db.Model):
 
 
 class ForecastResult(db.Model):
+    """Сохраненный прогноз с входными данными и названием использованной модели."""
+
     __tablename__ = "forecast_results"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -241,6 +259,7 @@ class ForecastResult(db.Model):
     program_name = db.Column(db.String(200), nullable=False)
     study_format = db.Column(db.String(80), nullable=False)
     input_payload = db.Column(db.Text)
+    model_name = db.Column(db.String(80), nullable=False, default="random_forest")
     predicted_price = db.Column(db.Float, nullable=False)
     recommendation = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -256,6 +275,7 @@ class ForecastResult(db.Model):
             "education_level": self.education_level,
             "program_name": self.program_name,
             "study_format": self.study_format,
+            "model_name": self.model_name,
             "predicted_price": self.predicted_price,
             "recommendation": self.recommendation,
         }

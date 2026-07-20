@@ -20,7 +20,8 @@ def export_forecasts_to_xlsx(export_dir, forecasts):
     ws = wb.active
     ws.title = "Прогноз цен"
     headers = [
-        "Год", "Регион", "Уровень", "Программа", "Формат", "Прогнозная цена", "Рекомендация"
+        "Год", "Регион", "Уровень", "Программа", "Формат", "Модель",
+        "Прогнозная цена", "Рекомендация"
     ]
     ws.append(headers)
     for cell in ws[1]:
@@ -33,6 +34,7 @@ def export_forecasts_to_xlsx(export_dir, forecasts):
             forecast.education_level,
             forecast.program_name,
             forecast.study_format,
+            forecast.model_name,
             forecast.predicted_price,
             forecast.recommendation,
         ])
@@ -55,9 +57,9 @@ def export_forecasts_to_docx(export_dir, forecasts):
         "Прогнозная цена рассчитана с учетом характеристик образовательной программы, формата обучения, "
         "региона, спроса, конкурентной цены и дополнительных экономических показателей."
     )
-    table = document.add_table(rows=1, cols=7)
+    table = document.add_table(rows=1, cols=8)
     table.style = "Table Grid"
-    headers = ["Год", "Регион", "Уровень", "Программа", "Формат", "Цена", "Рекомендация"]
+    headers = ["Год", "Регион", "Уровень", "Программа", "Формат", "Модель", "Цена", "Рекомендация"]
     for i, header in enumerate(headers):
         table.rows[0].cells[i].text = header
     for forecast in forecasts:
@@ -67,8 +69,9 @@ def export_forecasts_to_docx(export_dir, forecasts):
         row[2].text = forecast.education_level
         row[3].text = forecast.program_name
         row[4].text = forecast.study_format
-        row[5].text = f"{forecast.predicted_price:,.2f}".replace(",", " ")
-        row[6].text = forecast.recommendation or ""
+        row[5].text = forecast.model_name
+        row[6].text = f"{forecast.predicted_price:,.2f}".replace(",", " ")
+        row[7].text = forecast.recommendation or ""
     document.add_paragraph(
         "Полученные значения следует использовать как аналитический ориентир, а не как окончательное управленческое решение. "
         "Перед утверждением цены необходимо учитывать ограничения бюджета, план набора, позиционирование программы и текущую конкурентную среду."

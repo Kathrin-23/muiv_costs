@@ -16,11 +16,11 @@
 </div>
 <h2>Последние прогнозы</h2>
 <table>
-    <tr><th>Дата</th><th>Программа</th><th>Регион</th><th>Цена</th></tr>
+    <tr><th>Дата</th><th>Программа</th><th>Модель</th><th>Регион</th><th>Цена</th></tr>
     {% for f in latest_forecasts %}
-        <tr><td>{{ f.created_at.strftime('%d.%m.%Y') }}</td><td>{{ f.program_name }}</td><td>{{ f.region }}</td><td>{{ '%.2f'|format(f.predicted_price) }}</td></tr>
+        <tr><td>{{ f.created_at.strftime('%d.%m.%Y') }}</td><td>{{ f.program_name }}</td><td>{{ f.model_name }}</td><td>{{ f.region }}</td><td>{{ '%.2f'|format(f.predicted_price) }}</td></tr>
     {% else %}
-        <tr><td colspan="4">Прогнозы пока не сформированы.</td></tr>
+        <tr><td colspan="5">Прогнозы пока не сформированы.</td></tr>
     {% endfor %}
 </table>
 <h2>Последние датасеты</h2>

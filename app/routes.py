@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from flask import flash, redirect, render_template, request, send_file, url_for
+from flask import flash, redirect, render_template, request, send_file, send_from_directory, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.security import check_password_hash
 
@@ -13,17 +13,21 @@ from app.file_service import (
     save_uploaded_file,
 )
 from app.ml_service import (
+    MODEL_DISPLAY_NAMES,
+    available_models,
     category_analysis,
     competitor_analysis,
-    cross_validate_model,
     dataset_preview,
     dataset_summary,
     demand_analysis,
+    load_model_registry,
+    model_path_for,
     prepare_forecast_payload_from_service,
     predict_price,
     price_dynamics,
     program_rating,
-    train_model,
+    selected_model_name,
+    train_all_models,
 )
 from app.models import (
     CompetitorPrice,
@@ -68,6 +72,7 @@ def register_routes(app):
     app.add_url_rule("/forecast", "forecast", forecast, methods=["GET", "POST"])
     app.add_url_rule("/forecast/service/<int:service_id>", "forecast_service", forecast_service)
     app.add_url_rule("/model-training", "model_training", model_training, methods=["GET", "POST"])
+    app.add_url_rule("/model-diagnostics/<path:filename>", "model_diagnostic", model_diagnostic)
     app.add_url_rule("/reports", "reports", reports)
     app.add_url_rule("/reports/export/xlsx", "export_xlsx", export_xlsx)
     app.add_url_rule("/reports/export/docx", "export_docx", export_docx)
@@ -135,7 +140,7 @@ def inject_layout_context():
         breadcrumbs.append({"title": names.get(endpoint, "Раздел"), "url": None})
     return {
         "breadcrumbs": breadcrumbs,
-        "author_name": "Горячевская Екатерина Николаевна",
+        "author_name": "Горячевская Екатерина Николевна",
         "project_year": "2026",
     }
 
@@ -456,15 +461,19 @@ def price_analysis():
 
 @login_required
 def forecast():
+    """Рассчитать и сохранить прогноз выбранной пользователем моделью."""
+
     prediction = None
     services = EducationalService.query.order_by(EducationalService.id.asc()).all()
-    metrics = None
-    metrics_path = Path(Config.MODEL_PATH).with_name("metrics.json")
-    if metrics_path.exists():
-        metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+    models = available_models(Config.MODEL_DIR)
+    default_model = selected_model_name(Config.MODEL_REGISTRY_PATH)
+    selected_model = request.form.get("model_name", default_model)
+    registry = load_model_registry(Config.MODEL_REGISTRY_PATH)
+    metrics = registry.get("models", {}).get(selected_model)
     if request.method == "POST":
         try:
-            result = predict_price(Config.MODEL_PATH, request.form)
+            model_path = model_path_for(selected_model, Config.MODEL_DIR)
+            result = predict_price(model_path, request.form, model_name=selected_model)
             prediction = result
             record = ForecastResult(
                 created_by=current_user.id,
@@ -474,6 +483,7 @@ def forecast():
                 program_name=result["input"]["program_name"],
                 study_format=result["input"]["study_format"],
                 input_payload=json.dumps(result["input"], ensure_ascii=False),
+                model_name=selected_model,
                 predicted_price=result["predicted_price"],
                 recommendation=result["recommendation"],
             )
@@ -483,15 +493,30 @@ def forecast():
         except Exception as exc:
             db.session.rollback()
             flash(str(exc), "danger")
-    return render_template("forecast.html", prediction=prediction, services=services, metrics=metrics)
+    return render_template(
+        "forecast.html",
+        prediction=prediction,
+        services=services,
+        models=models,
+        selected_model=selected_model,
+        model_display_names=MODEL_DISPLAY_NAMES,
+        metrics=metrics,
+    )
 
 
 @login_required
 def forecast_service(service_id):
+    """Сформировать прогноз услуги автоматически выбранной лучшей моделью."""
+
     service = EducationalService.query.get_or_404(service_id)
     try:
         payload = prepare_forecast_payload_from_service(service)
-        result = predict_price(Config.MODEL_PATH, payload)
+        model_name = selected_model_name(Config.MODEL_REGISTRY_PATH)
+        result = predict_price(
+            model_path_for(model_name, Config.MODEL_DIR),
+            payload,
+            model_name=model_name,
+        )
         forecast_record = ForecastResult(
             service_id=service.id,
             created_by=current_user.id,
@@ -501,6 +526,7 @@ def forecast_service(service_id):
             program_name=result["input"]["program_name"],
             study_format=result["input"]["study_format"],
             input_payload=json.dumps(result["input"], ensure_ascii=False),
+            model_name=model_name,
             predicted_price=result["predicted_price"],
             recommendation=result["recommendation"],
         )
@@ -516,20 +542,32 @@ def forecast_service(service_id):
 @login_required
 @role_required("admin", "analyst")
 def model_training():
-    metrics = None
-    cv_metrics = None
-    metrics_path = Path(Config.MODEL_PATH).with_name("metrics.json")
-    if metrics_path.exists():
-        metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+    """Запустить единое сравнение трех моделей и показать полный реестр."""
+
     if request.method == "POST":
         try:
-            model_name = request.form.get("model_name", "random_forest")
-            metrics = train_model(Config.PROCESSED_DATASET_PATH, Config.MODEL_PATH, metrics_path, model_name=model_name)
-            cv_metrics = cross_validate_model(Config.PROCESSED_DATASET_PATH, model_name=model_name)
-            flash("Модель успешно обучена и сохранена.", "success")
+            train_all_models(
+                Config.PROCESSED_DATASET_PATH,
+                Config.MODEL_DIR,
+                registry_path=Config.MODEL_REGISTRY_PATH,
+                diagnostics_dir=Config.DIAGNOSTICS_DIR,
+            )
+            flash("Три модели обучены, сравнены и сохранены.", "success")
         except Exception as exc:
             flash(str(exc), "danger")
-    return render_template("model_training.html", metrics=metrics, cv_metrics=cv_metrics)
+    registry = load_model_registry(Config.MODEL_REGISTRY_PATH)
+    return render_template(
+        "model_training.html",
+        registry=registry,
+        model_display_names=MODEL_DISPLAY_NAMES,
+    )
+
+
+@login_required
+def model_diagnostic(filename):
+    """Отдать сохраненный диагностический график из разрешенного каталога."""
+
+    return send_from_directory(Config.DIAGNOSTICS_DIR, filename)
 
 
 @login_required

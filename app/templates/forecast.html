@@ -2,6 +2,15 @@
 {% block content %}
 <h1>Прогнозирование цены</h1>
 <form method="post" class="grid-form">
+    <label>Модель
+        <select name="model_name" required>
+            {% for model in models %}
+            <option value="{{ model.name }}" {% if model.name == selected_model %}selected{% endif %}>
+                {{ model.display_name }}
+            </option>
+            {% endfor %}
+        </select>
+    </label>
     <label>Год<input name="year" value="2027" required></label>
     <label>Регион<input name="region" value="Москва" required></label>
     <label>Уровень<input name="education_level" value="бакалавриат" required></label>
@@ -21,6 +30,7 @@
 <div class="result">
     <h2>Результат</h2>
     <p>Прогнозная цена: <b>{{ '%.2f'|format(prediction.predicted_price) }}</b> руб.</p>
+    <p>Использованная модель: <b>{{ model_display_names[prediction.model_name] }}</b></p>
     <p>{{ prediction.recommendation }}</p>
 </div>
 <h2>Данные на вход модели</h2>
@@ -31,13 +41,14 @@
 </table>
 {% endif %}
 {% if metrics %}
-<h2>Метрики качества последнего обучения</h2>
+<h2>Метрики выбранной модели</h2>
 <table>
-    <tr><th>MAE</th><td>{{ metrics.mae }}</td></tr>
-    <tr><th>RMSE</th><td>{{ metrics.rmse }}</td></tr>
-    <tr><th>R2</th><td>{{ metrics.r2 }}</td></tr>
-    <tr><th>Алгоритм</th><td>{{ metrics.model_name or 'random_forest' }}</td></tr>
-    <tr><th>Строк в датасете</th><td>{{ metrics.dataset_rows or '-' }}</td></tr>
+    <tr><th>Алгоритм</th><td>{{ metrics.display_name }}</td></tr>
+    <tr><th>Test MAE</th><td>{{ metrics.metrics.test.mae }}</td></tr>
+    <tr><th>Test RMSE</th><td>{{ metrics.metrics.test.rmse }}</td></tr>
+    <tr><th>Test R²</th><td>{{ metrics.metrics.test.r2 }}</td></tr>
+    <tr><th>CV MAE</th><td>{{ metrics.cross_validation.mae_mean }} ± {{ metrics.cross_validation.mae_std }}</td></tr>
+    <tr><th>Лучшие параметры</th><td>{{ metrics.best_params }}</td></tr>
 </table>
 {% endif %}
 {% endblock %}

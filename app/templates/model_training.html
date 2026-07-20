@@ -1,22 +1,76 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Обучение модели</h1>
+<h1>Сравнительное обучение моделей</h1>
+<p class="hint">Одна команда выполняет разбиение train/validation/test, подбор гиперпараметров, кросс-валидацию, обучение и сохранение трех моделей.</p>
 <form method="post" class="form">
-    <label>Алгоритм
-        <select name="model_name">
-            <option value="random_forest">Случайный лес</option>
-            <option value="gradient_boosting">Градиентный бустинг</option>
-            <option value="ridge">Гребневая регрессия</option>
-        </select>
-    </label>
-    <button>Обучить модель</button>
+    <button>Обучить и сравнить все модели</button>
 </form>
-{% if metrics %}
-<h2>Метрики последнего обучения</h2>
-<table>{% for k,v in metrics.items() %}<tr><th>{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}</table>
-{% endif %}
-{% if cv_metrics %}
-<h2>Кросс-валидация</h2>
-<table>{% for k,v in cv_metrics.items() %}<tr><th>{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}</table>
+
+{% if registry.models %}
+<div class="result">
+    <h2>Итог эксперимента</h2>
+    <p>Выбранная модель: <b>{{ model_display_names[registry.selected_model] }}</b></p>
+    <p>Критерий выбора: минимальный RMSE на валидационной выборке.</p>
+    <p class="hint">Дата формирования: {{ registry.generated_at }}</p>
+</div>
+
+<h2>Сравнение моделей</h2>
+<div class="table-scroll">
+<table>
+    <tr>
+        <th>Модель</th>
+        <th>Выборка</th>
+        <th>MAE</th>
+        <th>RMSE</th>
+        <th>MAPE</th>
+        <th>R²</th>
+        <th>CV MAE</th>
+        <th>Время, сек.</th>
+    </tr>
+    {% for model_name, report in registry.models.items() %}
+        {% for split_name, split_metrics in report.metrics.items() %}
+        <tr>
+            {% if loop.first %}
+            <td rowspan="3">
+                <b>{{ report.display_name }}</b>
+                {% if model_name == registry.selected_model %}<div class="hint">выбрана итоговой</div>{% endif %}
+            </td>
+            {% endif %}
+            <td>{{ {'train':'обучающая', 'validation':'валидационная', 'test':'тестовая'}[split_name] }}</td>
+            <td>{{ split_metrics.mae }}</td>
+            <td>{{ split_metrics.rmse }}</td>
+            <td>{{ split_metrics.mape }}</td>
+            <td>{{ split_metrics.r2 }}</td>
+            {% if loop.first %}
+            <td rowspan="3">{{ report.cross_validation.mae_mean }} ± {{ report.cross_validation.mae_std }}</td>
+            <td rowspan="3">{{ report.duration_seconds }}</td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    {% endfor %}
+</table>
+</div>
+
+{% for model_name, report in registry.models.items() %}
+<section class="card">
+    <h2>{{ report.display_name }}</h2>
+    <p><b>Лучшие параметры:</b> {{ report.best_params }}</p>
+    <p><b>Кросс-валидация:</b> MAE {{ report.cross_validation.mae_mean }},
+        RMSE {{ report.cross_validation.rmse_mean }}, R² {{ report.cross_validation.r2_mean }}
+        ({{ report.cross_validation.folds }} блоков).</p>
+    <p><b>Диагностика переобучения:</b> {{ report.overfitting.conclusion }}</p>
+    <div class="diagnostic-grid">
+        {% for diagnostic_name, filename in report.diagnostics.items() %}
+            {% if filename.endswith('.png') %}
+            <figure>
+                <img src="{{ url_for('model_diagnostic', filename=filename) }}" alt="{{ diagnostic_name }}">
+            </figure>
+            {% endif %}
+        {% endfor %}
+    </div>
+</section>
+{% endfor %}
+{% else %}
+<p class="hint">Результаты еще не сформированы. Запустите сравнительное обучение.</p>
 {% endif %}
 {% endblock %}
