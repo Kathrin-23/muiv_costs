@@ -26,9 +26,9 @@ def test_dataset_upload_and_preview(app_instance, monkeypatch, tmp_path):
     login(client, "analyst", "analyst123")
 
     csv_data = (
-        "year,region,education_level,program_name,study_format,duration_months,base_price,"
-        "competitor_price,demand_index,salary_index,advertising_spend,discount_percent,student_count,final_price\n"
-        "2026,Москва,бакалавриат,Тестовая программа,очная,48,100000,98000,70,75,120000,5,80,105000\n"
+        "year,organization,program_name,base_price,competitor_price,student_count,"
+        "admission_score,salary_index,final_price\n"
+        "2026,Тестовый вуз,Экономика,100000,98000,80,70,165,105000\n"
     )
     response = client.post(
         "/upload-dataset",
@@ -47,10 +47,9 @@ def test_dataset_upload_by_url_route(app_instance, monkeypatch, tmp_path):
     source = tmp_path / "from_url.csv"
     processed = tmp_path / "processed_from_url.csv"
     source.write_text(
-        "year,region,education_level,program_name,study_format,duration_months,"
-        "base_price,competitor_price,demand_index,salary_index,advertising_spend,"
-        "discount_percent,student_count,final_price\n"
-        "2026,Москва,бакалавриат,URL программа,очная,48,100000,98000,70,75,0,0,80,105000\n",
+        "year,organization,program_name,base_price,competitor_price,student_count,"
+        "admission_score,salary_index,final_price\n"
+        "2026,URL вуз,Экономика,100000,98000,80,70,165,105000\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(Config, "PROCESSED_DATASET_PATH", str(processed))

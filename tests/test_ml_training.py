@@ -6,9 +6,13 @@ from pathlib import Path
 import pandas as pd
 
 from app.ml_service import (
+    FEATURE_COLUMNS,
     MODEL_FILENAMES,
     MODEL_PARAMETER_GRIDS,
+    calculate_metrics,
     load_model,
+    read_dataset,
+    split_dataset,
     train_all_models,
 )
 from config import Config
@@ -59,6 +63,11 @@ def test_comparison_training_saves_three_models_and_metrics(monkeypatch, tmp_pat
         report = registry["models"][model_name]
         assert set(report["metrics"]) == {"train", "validation", "test"}
         assert report["cross_validation"]["folds"] == 5
+        assert report["split_years"] == {
+            "train": [2019, 2020, 2021, 2022],
+            "validation": [2023],
+            "test": [2024],
+        }
         assert report["best_params"]
         assert "conclusion" in report["overfitting"]
 
@@ -89,6 +98,10 @@ def test_colab_notebook_has_executed_outputs():
     assert "colab.research.google.com" in source
     assert "DATASET_URL" in source
     assert "GridSearchCV" in source
+    assert "TimeSeriesSplit" in source
+    assert 'clean["year"] <= 2022' in source
+    assert "advertising_spend" not in source
+    assert "discount_percent" not in source
     assert "model_random_forest.pkl" in source
     assert "model_gradient_boosting.pkl" in source
     assert "model_ridge.pkl" in source
@@ -101,3 +114,46 @@ def test_colab_notebook_has_executed_outputs():
         for cell in code_cells
         for output in cell.get("outputs", [])
     )
+
+
+def test_dataset_size_variability_and_temporal_split():
+    dataset = read_dataset(Config.PROCESSED_DATASET_PATH)
+
+    assert dataset.shape[0] >= 1_000
+    assert dataset["organization"].nunique() > 100
+    assert dataset["program_name"].nunique() > 20
+    assert dataset["student_count"].nunique() > 100
+    assert dataset["admission_score"].nunique() > 100
+    assert FEATURE_COLUMNS == [
+        "year",
+        "organization",
+        "program_name",
+        "base_price",
+        "competitor_price",
+        "student_count",
+        "admission_score",
+        "salary_index",
+    ]
+
+    splits = split_dataset(dataset)
+    assert sorted(splits["train"][0]["year"].unique()) == [2019, 2020, 2021, 2022]
+    assert sorted(splits["validation"][0]["year"].unique()) == [2023]
+    assert sorted(splits["test"][0]["year"].unique()) == [2024]
+
+
+def test_competitor_price_excludes_current_organization():
+    raw_path = Path(Config.PROCESSED_DATASET_PATH).parents[1] / "raw" / "educational_services_prices.csv"
+    raw = pd.read_csv(raw_path)
+    for _, row in raw.sample(100, random_state=42).iterrows():
+        peers = raw[
+            (raw["year"] == row["year"])
+            & (raw["program_name"] == row["program_name"])
+            & (raw["organization"] != row["organization"])
+        ]
+        assert not peers.empty
+        assert row["competitor_price"] == peers["final_price"].median()
+
+
+def test_mape_is_stored_as_percent():
+    result = calculate_metrics([100, 200], [90, 220])
+    assert result["mape"] == 10.0
