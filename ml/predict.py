@@ -1,10 +1,16 @@
+"""Пример прогнозирования цены сохраненной моделью.
+
+Автор: Горячевская Екатерина Николевна
+Тема ВКР: «Анализ и прогнозирование ценообразования на образовательные услуги».
+"""
+
 from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT))
 
-from app.ml_service import predict_price
+from app.ml_service import model_path_for, predict_price, selected_model_name
 from config import Config
 
 payload = {
@@ -24,5 +30,7 @@ payload = {
 }
 
 if __name__ == "__main__":
-    result = predict_price(Config.MODEL_PATH, payload)
+    model_name = selected_model_name(Config.MODEL_REGISTRY_PATH)
+    model_path = model_path_for(model_name, Config.MODEL_DIR)
+    result = predict_price(model_path, payload, model_name=model_name)
     print(result)

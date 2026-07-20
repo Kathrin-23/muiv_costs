@@ -1,0 +1,188 @@
+{
+  "generated_at": "2026-07-20T23:27:53",
+  "selection_metric": "validation.rmse",
+  "selected_model": "ridge",
+  "models": {
+    "random_forest": {
+      "model_name": "random_forest",
+      "display_name": "Случайный лес",
+      "best_params": {
+        "max_depth": 8,
+        "min_samples_leaf": 1,
+        "n_estimators": 180
+      },
+      "metrics": {
+        "train": {
+          "mae": 10345.32,
+          "rmse": 19422.84,
+          "mape": 0.5051,
+          "r2": 0.9538
+        },
+        "validation": {
+          "mae": 16288.24,
+          "rmse": 43255.33,
+          "mape": 0.4319,
+          "r2": 0.7408
+        },
+        "test": {
+          "mae": 16155.32,
+          "rmse": 42768.16,
+          "mape": 0.5009,
+          "r2": 0.7741
+        }
+      },
+      "cross_validation": {
+        "folds": 5,
+        "mae_mean": 15305.2,
+        "mae_std": 3160.11,
+        "rmse_mean": 37047.18,
+        "rmse_std": 13812.88,
+        "r2_mean": 0.808,
+        "r2_std": 0.1216
+      },
+      "overfitting": {
+        "detected": true,
+        "r2_gap": 0.213,
+        "validation_to_train_rmse": 2.227,
+        "conclusion": "Есть признаки переобучения: качество на обучающей выборке заметно выше качества на валидационной выборке."
+      },
+      "duration_seconds": 4.591,
+      "rows": {
+        "train": 483,
+        "validation": 104,
+        "test": 104,
+        "dataset": 691
+      },
+      "diagnostics": {
+        "actual_vs_predicted": "random_forest_actual_vs_predicted.png",
+        "residuals": "random_forest_residuals.png",
+        "error_distribution": "random_forest_error_distribution.png",
+        "split_metrics": "random_forest_split_metrics.png",
+        "feature_importance_json": "random_forest_feature_importance.json",
+        "feature_importance": "random_forest_feature_importance.png"
+      },
+      "trained_at": "2026-07-20T23:27:51",
+      "model_path": "model_random_forest.pkl"
+    },
+    "gradient_boosting": {
+      "model_name": "gradient_boosting",
+      "display_name": "Градиентный бустинг",
+      "best_params": {
+        "learning_rate": 0.1,
+        "max_depth": 2,
+        "n_estimators": 180
+      },
+      "metrics": {
+        "train": {
+          "mae": 9903.14,
+          "rmse": 16245.22,
+          "mape": 0.4075,
+          "r2": 0.9677
+        },
+        "validation": {
+          "mae": 16160.91,
+          "rmse": 36354.0,
+          "mape": 0.3994,
+          "r2": 0.8169
+        },
+        "test": {
+          "mae": 14894.92,
+          "rmse": 35060.06,
+          "mape": 0.3594,
+          "r2": 0.8482
+        }
+      },
+      "cross_validation": {
+        "folds": 5,
+        "mae_mean": 16915.05,
+        "mae_std": 2109.41,
+        "rmse_mean": 37315.04,
+        "rmse_std": 8219.88,
+        "r2_mean": 0.8221,
+        "r2_std": 0.0651
+      },
+      "overfitting": {
+        "detected": true,
+        "r2_gap": 0.1508,
+        "validation_to_train_rmse": 2.2378,
+        "conclusion": "Есть признаки переобучения: качество на обучающей выборке заметно выше качества на валидационной выборке."
+      },
+      "duration_seconds": 0.981,
+      "rows": {
+        "train": 483,
+        "validation": 104,
+        "test": 104,
+        "dataset": 691
+      },
+      "diagnostics": {
+        "actual_vs_predicted": "gradient_boosting_actual_vs_predicted.png",
+        "residuals": "gradient_boosting_residuals.png",
+        "error_distribution": "gradient_boosting_error_distribution.png",
+        "split_metrics": "gradient_boosting_split_metrics.png",
+        "feature_importance_json": "gradient_boosting_feature_importance.json",
+        "feature_importance": "gradient_boosting_feature_importance.png"
+      },
+      "trained_at": "2026-07-20T23:27:52",
+      "model_path": "model_gradient_boosting.pkl"
+    },
+    "ridge": {
+      "model_name": "ridge",
+      "display_name": "Гребневая регрессия Ridge",
+      "best_params": {
+        "alpha": 0.1
+      },
+      "metrics": {
+        "train": {
+          "mae": 8990.68,
+          "rmse": 16342.05,
+          "mape": 0.205,
+          "r2": 0.9673
+        },
+        "validation": {
+          "mae": 15472.76,
+          "rmse": 25561.46,
+          "mape": 0.4719,
+          "r2": 0.9095
+        },
+        "test": {
+          "mae": 13825.62,
+          "rmse": 22196.23,
+          "mape": 0.2691,
+          "r2": 0.9391
+        }
+      },
+      "cross_validation": {
+        "folds": 5,
+        "mae_mean": 16662.39,
+        "mae_std": 1048.85,
+        "rmse_mean": 29533.48,
+        "rmse_std": 4935.29,
+        "r2_mean": 0.8871,
+        "r2_std": 0.0358
+      },
+      "overfitting": {
+        "detected": true,
+        "r2_gap": 0.0578,
+        "validation_to_train_rmse": 1.5642,
+        "conclusion": "Есть признаки переобучения: качество на обучающей выборке заметно выше качества на валидационной выборке."
+      },
+      "duration_seconds": 0.568,
+      "rows": {
+        "train": 483,
+        "validation": 104,
+        "test": 104,
+        "dataset": 691
+      },
+      "diagnostics": {
+        "actual_vs_predicted": "ridge_actual_vs_predicted.png",
+        "residuals": "ridge_residuals.png",
+        "error_distribution": "ridge_error_distribution.png",
+        "split_metrics": "ridge_split_metrics.png",
+        "feature_importance_json": "ridge_feature_importance.json",
+        "feature_importance": "ridge_feature_importance.png"
+      },
+      "trained_at": "2026-07-20T23:27:53",
+      "model_path": "model_ridge.pkl"
+    }
+  }
+}

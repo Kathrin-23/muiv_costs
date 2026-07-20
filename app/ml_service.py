@@ -1,15 +1,27 @@
+"""Подготовка данных, обучение моделей и прогнозирование стоимости.
+
+Автор: Горячевская Екатерина Николевна
+Тема ВКР: «Анализ и прогнозирование ценообразования на образовательные услуги».
+
+Модуль содержит единый воспроизводимый ML-конвейер: очистку данных, разбиение
+на три выборки, подбор гиперпараметров, сравнение алгоритмов, диагностику и
+сохранение каждой обученной модели в отдельный файл.
+"""
+
 import json
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from time import perf_counter
 
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score, root_mean_squared_error
-from sklearn.model_selection import train_test_split, KFold, cross_val_score
+from sklearn.model_selection import GridSearchCV, KFold, cross_validate, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
@@ -51,6 +63,32 @@ TARGET_COLUMN = "final_price"
 CATEGORICAL_COLUMNS = ["region", "education_level", "program_name", "study_format"]
 NUMERIC_COLUMNS = [column for column in FEATURE_COLUMNS if column not in CATEGORICAL_COLUMNS]
 
+MODEL_FILENAMES = {
+    "random_forest": "model_random_forest.pkl",
+    "gradient_boosting": "model_gradient_boosting.pkl",
+    "ridge": "model_ridge.pkl",
+}
+MODEL_DISPLAY_NAMES = {
+    "random_forest": "Случайный лес",
+    "gradient_boosting": "Градиентный бустинг",
+    "ridge": "Гребневая регрессия Ridge",
+}
+MODEL_PARAMETER_GRIDS = {
+    "random_forest": {
+        "regressor__n_estimators": [100, 180],
+        "regressor__max_depth": [8, None],
+        "regressor__min_samples_leaf": [1, 3],
+    },
+    "gradient_boosting": {
+        "regressor__n_estimators": [100, 180],
+        "regressor__learning_rate": [0.05, 0.1],
+        "regressor__max_depth": [2, 3],
+    },
+    "ridge": {
+        "regressor__alpha": [0.1, 1.0, 10.0, 100.0],
+    },
+}
+
 COLUMN_ALIASES = {
     "Год": "year",
     "Регион": "region",
@@ -71,14 +109,21 @@ COLUMN_ALIASES = {
 
 
 def read_dataset(path):
+    """Прочитать CSV/XLSX и привести таблицу к схеме ML-модуля."""
+
     dataset_path = Path(path)
     if not dataset_path.exists():
         raise FileNotFoundError(f"Файл набора данных не найден: {dataset_path}")
-    df = pd.read_csv(dataset_path)
+    if dataset_path.suffix.lower() == ".xlsx":
+        df = pd.read_excel(dataset_path)
+    else:
+        df = pd.read_csv(dataset_path)
     return normalize_dataset(df)
 
 
 def normalize_dataset(df):
+    """Очистить названия, типы и пропуски, затем проверить обязательные поля."""
+
     normalized = df.copy()
     normalized.columns = [str(column).replace("\ufeff", "").strip() for column in normalized.columns]
     rename_map = {column: COLUMN_ALIASES.get(column, column) for column in normalized.columns}
@@ -115,6 +160,8 @@ def normalize_dataset(df):
 
 
 def build_preprocessor():
+    """Создать общий препроцессор категориальных и числовых признаков."""
+
     return ColumnTransformer(
         transformers=[
             ("categorical", OneHotEncoder(handle_unknown="ignore"), CATEGORICAL_COLUMNS),
@@ -124,54 +171,418 @@ def build_preprocessor():
 
 
 def build_model(model_name="random_forest"):
+    """Создать конвейер предобработки и выбранного регрессора."""
+
+    if model_name not in MODEL_FILENAMES:
+        raise ValueError(f"Неизвестная модель: {model_name}")
     preprocessor = build_preprocessor()
     if model_name == "gradient_boosting":
-        estimator = GradientBoostingRegressor(random_state=42, n_estimators=160, max_depth=3)
+        estimator = GradientBoostingRegressor(random_state=42)
     elif model_name == "ridge":
         estimator = Ridge(alpha=1.0)
     else:
         estimator = RandomForestRegressor(
-            n_estimators=150,
             random_state=42,
-            max_depth=12,
-            min_samples_leaf=3,
             n_jobs=-1,
         )
     return Pipeline(steps=[("preprocessor", preprocessor), ("regressor", estimator)])
 
 
-def train_model(dataset_path, model_path, metrics_path=None, model_name="random_forest"):
-    df = read_dataset(dataset_path)
+def split_dataset(df, random_state=42):
+    """Разделить данные на train/validation/test в пропорции 70/15/15."""
+
     X = df[FEATURE_COLUMNS]
     y = df[TARGET_COLUMN]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.22, random_state=42)
-    model = build_model(model_name=model_name)
-    model.fit(X_train, y_train)
+    X_train, X_temp, y_train, y_temp = train_test_split(
+        X,
+        y,
+        test_size=0.30,
+        random_state=random_state,
+    )
+    X_validation, X_test, y_validation, y_test = train_test_split(
+        X_temp,
+        y_temp,
+        test_size=0.50,
+        random_state=random_state,
+    )
+    return {
+        "train": (X_train, y_train),
+        "validation": (X_validation, y_validation),
+        "test": (X_test, y_test),
+    }
+
+
+def _clean_best_params(params):
+    """Убрать служебный префикс конвейера из названий параметров."""
+
+    return {
+        key.replace("regressor__", ""): value
+        for key, value in params.items()
+    }
+
+
+def _calculate_split_metrics(model, splits):
+    """Рассчитать одинаковый набор метрик на трех выборках."""
+
+    return {
+        split_name: calculate_metrics(y_values, model.predict(X_values))
+        for split_name, (X_values, y_values) in splits.items()
+    }
+
+
+def _cross_validation_metrics(model, X_train, y_train):
+    """Оценить настроенную модель пятикратной кросс-валидацией."""
+
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    scores = cross_validate(
+        model,
+        X_train,
+        y_train,
+        cv=cv,
+        scoring={
+            "mae": "neg_mean_absolute_error",
+            "rmse": "neg_root_mean_squared_error",
+            "r2": "r2",
+        },
+        n_jobs=-1,
+    )
+    return {
+        "folds": 5,
+        "mae_mean": round(float(-scores["test_mae"].mean()), 2),
+        "mae_std": round(float(scores["test_mae"].std()), 2),
+        "rmse_mean": round(float(-scores["test_rmse"].mean()), 2),
+        "rmse_std": round(float(scores["test_rmse"].std()), 2),
+        "r2_mean": round(float(scores["test_r2"].mean()), 4),
+        "r2_std": round(float(scores["test_r2"].std()), 4),
+    }
+
+
+def _overfitting_conclusion(metrics):
+    """Сформировать интерпретируемый вывод о возможном переобучении."""
+
+    train = metrics["train"]
+    validation = metrics["validation"]
+    r2_gap = train["r2"] - validation["r2"]
+    rmse_ratio = (
+        validation["rmse"] / train["rmse"]
+        if train["rmse"] > 0
+        else float("inf")
+    )
+    detected = r2_gap > 0.15 or rmse_ratio > 1.5
+    if detected:
+        conclusion = (
+            "Есть признаки переобучения: качество на обучающей выборке заметно "
+            "выше качества на валидационной выборке."
+        )
+    else:
+        conclusion = (
+            "Выраженных признаков переобучения не обнаружено: метрики обучающей "
+            "и валидационной выборок сопоставимы."
+        )
+    return {
+        "detected": detected,
+        "r2_gap": round(float(r2_gap), 4),
+        "validation_to_train_rmse": round(float(rmse_ratio), 4),
+        "conclusion": conclusion,
+    }
+
+
+def _feature_importance(model):
+    """Получить важность преобразованных признаков для дерева или Ridge."""
+
+    preprocessor = model.named_steps["preprocessor"]
+    estimator = model.named_steps["regressor"]
+    feature_names = preprocessor.get_feature_names_out()
+    if hasattr(estimator, "feature_importances_"):
+        values = estimator.feature_importances_
+    elif hasattr(estimator, "coef_"):
+        values = np.abs(np.ravel(estimator.coef_))
+    else:
+        return []
+    items = [
+        {"feature": str(name), "importance": round(float(value), 8)}
+        for name, value in zip(feature_names, values)
+    ]
+    return sorted(items, key=lambda item: item["importance"], reverse=True)
+
+
+def generate_diagnostics(model, model_name, splits, metrics, output_dir):
+    """Сохранить пять графиков диагностики и JSON важности признаков."""
+
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    X_test, y_test = splits["test"]
     predictions = model.predict(X_test)
-    metrics = calculate_metrics(y_test, predictions)
-    metrics.update({
+    residuals = np.asarray(y_test) - predictions
+    files = {}
+
+    def save_figure(key, filename):
+        path = output_dir / filename
+        plt.tight_layout()
+        plt.savefig(path, dpi=140, bbox_inches="tight")
+        plt.close()
+        files[key] = path.name
+
+    plt.figure(figsize=(7, 5))
+    plt.scatter(y_test, predictions, alpha=0.65)
+    bounds = [min(float(y_test.min()), float(predictions.min())), max(float(y_test.max()), float(predictions.max()))]
+    plt.plot(bounds, bounds, "--", color="crimson")
+    plt.xlabel("Фактическая цена, руб.")
+    plt.ylabel("Прогнозная цена, руб.")
+    plt.title(f"{MODEL_DISPLAY_NAMES[model_name]}: факт и прогноз")
+    save_figure("actual_vs_predicted", f"{model_name}_actual_vs_predicted.png")
+
+    plt.figure(figsize=(7, 5))
+    plt.scatter(predictions, residuals, alpha=0.65)
+    plt.axhline(0, linestyle="--", color="crimson")
+    plt.xlabel("Прогнозная цена, руб.")
+    plt.ylabel("Остаток, руб.")
+    plt.title(f"{MODEL_DISPLAY_NAMES[model_name]}: остатки")
+    save_figure("residuals", f"{model_name}_residuals.png")
+
+    plt.figure(figsize=(7, 5))
+    plt.hist(np.abs(residuals), bins=20, edgecolor="white")
+    plt.xlabel("Абсолютная ошибка, руб.")
+    plt.ylabel("Количество наблюдений")
+    plt.title(f"{MODEL_DISPLAY_NAMES[model_name]}: распределение ошибок")
+    save_figure("error_distribution", f"{model_name}_error_distribution.png")
+
+    split_names = ["train", "validation", "test"]
+    plt.figure(figsize=(8, 5))
+    positions = np.arange(len(split_names))
+    width = 0.35
+    plt.bar(positions - width / 2, [metrics[name]["mae"] for name in split_names], width, label="MAE")
+    plt.bar(positions + width / 2, [metrics[name]["rmse"] for name in split_names], width, label="RMSE")
+    plt.xticks(positions, ["Обучение", "Валидация", "Тест"])
+    plt.ylabel("Ошибка, руб.")
+    plt.title(f"{MODEL_DISPLAY_NAMES[model_name]}: метрики выборок")
+    plt.legend()
+    save_figure("split_metrics", f"{model_name}_split_metrics.png")
+
+    importance = _feature_importance(model)
+    importance_path = output_dir / f"{model_name}_feature_importance.json"
+    importance_path.write_text(
+        json.dumps(importance, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    files["feature_importance_json"] = importance_path.name
+    top = importance[:15]
+    if top:
+        plt.figure(figsize=(9, 6))
+        plt.barh(
+            [item["feature"] for item in reversed(top)],
+            [item["importance"] for item in reversed(top)],
+        )
+        plt.xlabel("Важность")
+        plt.title(f"{MODEL_DISPLAY_NAMES[model_name]}: важность признаков")
+        save_figure("feature_importance", f"{model_name}_feature_importance.png")
+    return files
+
+
+def _train_experiment(df, model_name, diagnostics_dir=None):
+    """Настроить одну модель и вернуть финальный конвейер и полный отчет."""
+
+    splits = split_dataset(df)
+    X_train, y_train = splits["train"]
+    started = perf_counter()
+    search = GridSearchCV(
+        build_model(model_name),
+        MODEL_PARAMETER_GRIDS[model_name],
+        cv=3,
+        scoring="neg_root_mean_squared_error",
+        n_jobs=-1,
+        refit=True,
+    )
+    search.fit(X_train, y_train)
+    evaluation_model = search.best_estimator_
+    metrics = _calculate_split_metrics(evaluation_model, splits)
+    cv_metrics = _cross_validation_metrics(evaluation_model, X_train, y_train)
+    diagnostics = {}
+    if diagnostics_dir:
+        diagnostics = generate_diagnostics(
+            evaluation_model,
+            model_name,
+            splits,
+            metrics,
+            diagnostics_dir,
+        )
+
+    # После независимой оценки объединяем train и validation для финальной модели.
+    X_final = pd.concat([splits["train"][0], splits["validation"][0]])
+    y_final = pd.concat([splits["train"][1], splits["validation"][1]])
+    final_model = clone(evaluation_model)
+    final_model.fit(X_final, y_final)
+    duration = perf_counter() - started
+    report = {
         "model_name": model_name,
-        "train_rows": int(len(X_train)),
-        "test_rows": int(len(X_test)),
-        "dataset_rows": int(len(df)),
-        "trained_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    })
+        "display_name": MODEL_DISPLAY_NAMES[model_name],
+        "best_params": _clean_best_params(search.best_params_),
+        "metrics": metrics,
+        "cross_validation": cv_metrics,
+        "overfitting": _overfitting_conclusion(metrics),
+        "duration_seconds": round(float(duration), 3),
+        "rows": {
+            "train": int(len(splits["train"][0])),
+            "validation": int(len(splits["validation"][0])),
+            "test": int(len(splits["test"][0])),
+            "dataset": int(len(df)),
+        },
+        "diagnostics": diagnostics,
+        "trained_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    return final_model, report
+
+
+def train_all_models(dataset_path, model_dir, registry_path=None, diagnostics_dir=None):
+    """Обучить три модели, сохранить артефакты и выбрать лучшую по validation RMSE."""
+
+    df = read_dataset(dataset_path)
+    model_dir = Path(model_dir)
+    model_dir.mkdir(parents=True, exist_ok=True)
+    diagnostics_dir = Path(diagnostics_dir or model_dir / "diagnostics")
+    reports = {}
+    for model_name, filename in MODEL_FILENAMES.items():
+        model, report = _train_experiment(
+            df,
+            model_name,
+            diagnostics_dir=diagnostics_dir,
+        )
+        model_path = model_dir / filename
+        joblib.dump(model, model_path)
+        report["model_path"] = filename
+        metrics_path = model_dir / f"metrics_{model_name}.json"
+        metrics_path.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        reports[model_name] = report
+
+    selected_model = min(
+        reports,
+        key=lambda name: reports[name]["metrics"]["validation"]["rmse"],
+    )
+    registry = {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "selection_metric": "validation.rmse",
+        "selected_model": selected_model,
+        "models": reports,
+    }
+    registry_path = Path(registry_path or model_dir / "model_registry.json")
+    registry_path.write_text(
+        json.dumps(registry, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    comparison_rows = []
+    for model_name, report in reports.items():
+        row = {
+            "model_name": model_name,
+            "display_name": report["display_name"],
+            "duration_seconds": report["duration_seconds"],
+            "cv_mae_mean": report["cross_validation"]["mae_mean"],
+            "cv_rmse_mean": report["cross_validation"]["rmse_mean"],
+            "best_params": json.dumps(report["best_params"], ensure_ascii=False),
+            "selected": model_name == selected_model,
+        }
+        for split_name, split_metrics in report["metrics"].items():
+            for metric_name, value in split_metrics.items():
+                row[f"{split_name}_{metric_name}"] = value
+        comparison_rows.append(row)
+    pd.DataFrame(comparison_rows).to_csv(
+        model_dir / "model_comparison.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    # Файл сохраняет обратную совместимость со старой страницей метрик.
+    legacy_metrics = {
+        **reports[selected_model]["metrics"]["test"],
+        "model_name": selected_model,
+        "dataset_rows": reports[selected_model]["rows"]["dataset"],
+        "trained_at": reports[selected_model]["trained_at"],
+    }
+    (model_dir / "metrics.json").write_text(
+        json.dumps(legacy_metrics, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return registry
+
+
+def train_model(dataset_path, model_path, metrics_path=None, model_name="random_forest"):
+    """Обучить одну настроенную модель (совместимый программный интерфейс)."""
+
+    df = read_dataset(dataset_path)
+    model, report = _train_experiment(df, model_name)
     model_path = Path(model_path)
     model_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, model_path)
     if metrics_path:
-        Path(metrics_path).write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
-    return metrics
+        Path(metrics_path).write_text(
+            json.dumps(report, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    return report
 
 
 def load_model(model_path):
+    """Загрузить сериализованный конвейер модели."""
+
     model_path = Path(model_path)
     if not model_path.exists():
         raise FileNotFoundError("Файл обученной модели не найден")
     return joblib.load(model_path)
 
 
+def model_path_for(model_name, model_dir):
+    """Вернуть путь выбранной модели и отклонить неизвестный алгоритм."""
+
+    if model_name not in MODEL_FILENAMES:
+        raise ValueError(f"Неизвестная модель: {model_name}")
+    return Path(model_dir) / MODEL_FILENAMES[model_name]
+
+
+def available_models(model_dir):
+    """Вернуть метаданные существующих файлов моделей для интерфейса."""
+
+    result = []
+    for model_name, filename in MODEL_FILENAMES.items():
+        path = Path(model_dir) / filename
+        if path.exists():
+            result.append(
+                {
+                    "name": model_name,
+                    "display_name": MODEL_DISPLAY_NAMES[model_name],
+                    "path": str(path),
+                }
+            )
+    return result
+
+
+def load_model_registry(registry_path):
+    """Прочитать реестр сравнительного обучения или вернуть пустой словарь."""
+
+    path = Path(registry_path)
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def selected_model_name(registry_path, default="random_forest"):
+    """Определить автоматически выбранную модель по реестру эксперимента."""
+
+    registry = load_model_registry(registry_path)
+    selected = registry.get("selected_model", default)
+    return selected if selected in MODEL_FILENAMES else default
+
+
 def calculate_metrics(y_true, y_pred):
+    """Рассчитать MAE, RMSE, MAPE и коэффициент детерминации R²."""
+
     return {
         "mae": round(float(mean_absolute_error(y_true, y_pred)), 2),
         "rmse": round(float(root_mean_squared_error(y_true, y_pred)), 2),
@@ -181,6 +592,8 @@ def calculate_metrics(y_true, y_pred):
 
 
 def validate_input(payload):
+    """Проверить и типизировать признаки, введенные пользователем."""
+
     errors = []
     cleaned = {}
     for column in FEATURE_COLUMNS:
@@ -191,7 +604,7 @@ def validate_input(payload):
         if column in NUMERIC_COLUMNS:
             try:
                 cleaned[column] = float(value)
-            except ValueError:
+            except (TypeError, ValueError):
                 errors.append(f"Поле {column} должно быть числом")
         else:
             cleaned[column] = str(value).strip()
@@ -203,7 +616,9 @@ def validate_input(payload):
     return cleaned
 
 
-def predict_price(model_path, payload):
+def predict_price(model_path, payload, model_name=None):
+    """Рассчитать цену выбранной моделью и сформировать рекомендацию."""
+
     cleaned = validate_input(payload)
     model = load_model(model_path)
     input_frame = pd.DataFrame([cleaned], columns=FEATURE_COLUMNS)
@@ -213,6 +628,7 @@ def predict_price(model_path, payload):
         "predicted_price": round(predicted_price, 2),
         "recommendation": recommendation,
         "input": cleaned,
+        "model_name": model_name,
     }
 
 
@@ -334,18 +750,13 @@ def dataset_preview(dataset_path, limit=15):
 
 
 def cross_validate_model(dataset_path, model_name="random_forest"):
+    """Выполнить пятикратную кросс-валидацию базовой версии модели."""
+
     df = read_dataset(dataset_path)
     X = df[FEATURE_COLUMNS]
     y = df[TARGET_COLUMN]
     model = build_model(model_name=model_name)
-    cv = KFold(n_splits=5, shuffle=True, random_state=42)
-    scores = cross_val_score(model, X, y, cv=cv, scoring="neg_mean_absolute_error")
-    positive_scores = np.abs(scores)
-    return {
-        "folds": 5,
-        "mae_mean": round(float(positive_scores.mean()), 2),
-        "mae_std": round(float(positive_scores.std()), 2),
-    }
+    return _cross_validation_metrics(model, X, y)
 
 
 def prepare_forecast_payload_from_service(service, year=None):

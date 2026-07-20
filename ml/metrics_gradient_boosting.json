@@ -1,0 +1,61 @@
+{
+  "model_name": "gradient_boosting",
+  "display_name": "Градиентный бустинг",
+  "best_params": {
+    "learning_rate": 0.1,
+    "max_depth": 2,
+    "n_estimators": 180
+  },
+  "metrics": {
+    "train": {
+      "mae": 9903.14,
+      "rmse": 16245.22,
+      "mape": 0.4075,
+      "r2": 0.9677
+    },
+    "validation": {
+      "mae": 16160.91,
+      "rmse": 36354.0,
+      "mape": 0.3994,
+      "r2": 0.8169
+    },
+    "test": {
+      "mae": 14894.92,
+      "rmse": 35060.06,
+      "mape": 0.3594,
+      "r2": 0.8482
+    }
+  },
+  "cross_validation": {
+    "folds": 5,
+    "mae_mean": 16915.05,
+    "mae_std": 2109.41,
+    "rmse_mean": 37315.04,
+    "rmse_std": 8219.88,
+    "r2_mean": 0.8221,
+    "r2_std": 0.0651
+  },
+  "overfitting": {
+    "detected": true,
+    "r2_gap": 0.1508,
+    "validation_to_train_rmse": 2.2378,
+    "conclusion": "Есть признаки переобучения: качество на обучающей выборке заметно выше качества на валидационной выборке."
+  },
+  "duration_seconds": 0.981,
+  "rows": {
+    "train": 483,
+    "validation": 104,
+    "test": 104,
+    "dataset": 691
+  },
+  "diagnostics": {
+    "actual_vs_predicted": "gradient_boosting_actual_vs_predicted.png",
+    "residuals": "gradient_boosting_residuals.png",
+    "error_distribution": "gradient_boosting_error_distribution.png",
+    "split_metrics": "gradient_boosting_split_metrics.png",
+    "feature_importance_json": "gradient_boosting_feature_importance.json",
+    "feature_importance": "gradient_boosting_feature_importance.png"
+  },
+  "trained_at": "2026-07-20T23:27:52",
+  "model_path": "model_gradient_boosting.pkl"
+}
