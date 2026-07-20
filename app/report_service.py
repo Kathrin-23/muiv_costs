@@ -20,8 +20,8 @@ def export_forecasts_to_xlsx(export_dir, forecasts):
     ws = wb.active
     ws.title = "Прогноз цен"
     headers = [
-        "Год", "Регион", "Уровень", "Программа", "Формат", "Модель",
-        "Прогнозная цена", "Рекомендация"
+        "Год", "Организация", "Направление", "Модель", "Прогнозная цена",
+        "Рекомендация"
     ]
     ws.append(headers)
     for cell in ws[1]:
@@ -30,10 +30,8 @@ def export_forecasts_to_xlsx(export_dir, forecasts):
     for forecast in forecasts:
         ws.append([
             forecast.year,
-            forecast.region,
-            forecast.education_level,
+            forecast.organization,
             forecast.program_name,
-            forecast.study_format,
             forecast.model_name,
             forecast.predicted_price,
             forecast.recommendation,
@@ -57,21 +55,19 @@ def export_forecasts_to_docx(export_dir, forecasts):
         "Прогнозная цена рассчитана с учетом характеристик образовательной программы, формата обучения, "
         "региона, спроса, конкурентной цены и дополнительных экономических показателей."
     )
-    table = document.add_table(rows=1, cols=8)
+    table = document.add_table(rows=1, cols=6)
     table.style = "Table Grid"
-    headers = ["Год", "Регион", "Уровень", "Программа", "Формат", "Модель", "Цена", "Рекомендация"]
+    headers = ["Год", "Организация", "Направление", "Модель", "Цена", "Рекомендация"]
     for i, header in enumerate(headers):
         table.rows[0].cells[i].text = header
     for forecast in forecasts:
         row = table.add_row().cells
         row[0].text = str(forecast.year)
-        row[1].text = forecast.region
-        row[2].text = forecast.education_level
-        row[3].text = forecast.program_name
-        row[4].text = forecast.study_format
-        row[5].text = forecast.model_name
-        row[6].text = f"{forecast.predicted_price:,.2f}".replace(",", " ")
-        row[7].text = forecast.recommendation or ""
+        row[1].text = forecast.organization
+        row[2].text = forecast.program_name
+        row[3].text = forecast.model_name
+        row[4].text = f"{forecast.predicted_price:,.2f}".replace(",", " ")
+        row[5].text = forecast.recommendation or ""
     document.add_paragraph(
         "Полученные значения следует использовать как аналитический ориентир, а не как окончательное управленческое решение. "
         "Перед утверждением цены необходимо учитывать ограничения бюджета, план набора, позиционирование программы и текущую конкурентную среду."
@@ -114,7 +110,7 @@ def export_dataset_summary_to_docx(export_dir, summary, dynamics, rating, format
     document.add_heading("Динамика цен", level=2)
     dyn_table = document.add_table(rows=1, cols=5)
     dyn_table.style = "Table Grid"
-    headers = ["Год", "Средняя цена", "Рост, %", "Спрос", "Цена конкурентов"]
+    headers = ["Год", "Средняя цена", "Рост, %", "Средний прием", "Цена других вузов"]
     for i, header in enumerate(headers):
         dyn_table.rows[0].cells[i].text = header
     for item in dynamics:
@@ -122,19 +118,19 @@ def export_dataset_summary_to_docx(export_dir, summary, dynamics, rating, format
         row[0].text = str(item.get("year", ""))
         row[1].text = str(item.get("mean_price", ""))
         row[2].text = str(item.get("growth_percent", ""))
-        row[3].text = str(item.get("mean_demand", ""))
+        row[3].text = str(item.get("mean_students", ""))
         row[4].text = str(item.get("mean_competitor_price", ""))
 
-    document.add_heading("Программы с высоким спросом", level=2)
+    document.add_heading("Направления с высоким платным приемом", level=2)
     rank_table = document.add_table(rows=1, cols=4)
     rank_table.style = "Table Grid"
-    for i, header in enumerate(["Программа", "Средняя цена", "Спрос", "Заявки"]):
+    for i, header in enumerate(["Направление", "Средняя цена", "Средний балл", "Зачислено"]):
         rank_table.rows[0].cells[i].text = header
     for item in rating[:10]:
         row = rank_table.add_row().cells
         row[0].text = str(item.get("program_name", ""))
         row[1].text = str(item.get("mean_price", ""))
-        row[2].text = str(item.get("mean_demand", ""))
+        row[2].text = str(item.get("mean_admission_score", ""))
         row[3].text = str(item.get("students", ""))
 
     document.add_paragraph(

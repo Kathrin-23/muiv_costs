@@ -11,19 +11,14 @@
             {% endfor %}
         </select>
     </label>
-    <label>Год<input name="year" value="2027" required></label>
-    <label>Регион<input name="region" value="Москва" required></label>
-    <label>Уровень<input name="education_level" value="бакалавриат" required></label>
-    <label>Программа<input name="program_name" value="Искусственный интеллект и анализ данных" required></label>
-    <label>Формат<input name="study_format" value="дистанционная" required></label>
-    <label>Длительность, мес.<input name="duration_months" value="48" required></label>
-    <label>Базовая цена<input name="base_price" value="150000" required></label>
-    <label>Цена конкурентов<input name="competitor_price" value="145000" required></label>
-    <label>Индекс спроса<input name="demand_index" value="72" required></label>
-    <label>Индекс зарплат<input name="salary_index" value="76" required></label>
-    <label>Расходы на продвижение<input name="advertising_spend" value="160000" required></label>
-    <label>Скидка, %<input name="discount_percent" value="8" required></label>
-    <label>Количество заявок<input name="student_count" value="75" required></label>
+    <label>Год<input name="year" value="2025" required></label>
+    <label>Образовательная организация<input name="organization" value="НИУ ВШЭ, г. Москва" required></label>
+    <label>Укрупненная группа направлений<input name="program_name" value="Экономика" required></label>
+    <label>Цена в предыдущем году<input name="base_price" value="350000" required></label>
+    <label>Медиана цен других вузов<input name="competitor_price" value="230000" required></label>
+    <label>Зачислено на платные места<input name="student_count" value="100" required></label>
+    <label>Средний балл платного приема<input name="admission_score" value="75" required></label>
+    <label>Макроэкономический индекс<input name="salary_index" value="163.6" required></label>
     <button>Рассчитать прогноз</button>
 </form>
 {% if prediction %}
@@ -46,6 +41,7 @@
     <tr><th>Алгоритм</th><td>{{ metrics.display_name }}</td></tr>
     <tr><th>Test MAE</th><td>{{ metrics.metrics.test.mae }}</td></tr>
     <tr><th>Test RMSE</th><td>{{ metrics.metrics.test.rmse }}</td></tr>
+    <tr><th>Test MAPE</th><td>{{ metrics.metrics.test.mape }} %</td></tr>
     <tr><th>Test R²</th><td>{{ metrics.metrics.test.r2 }}</td></tr>
     <tr><th>CV MAE</th><td>{{ metrics.cross_validation.mae_mean }} ± {{ metrics.cross_validation.mae_std }}</td></tr>
     <tr><th>Лучшие параметры</th><td>{{ metrics.best_params }}</td></tr>

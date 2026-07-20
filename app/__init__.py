@@ -48,6 +48,14 @@ def ensure_schema_updates():
             )
         )
         db.session.commit()
+    if "organization" not in columns:
+        db.session.execute(
+            text(
+                "ALTER TABLE forecast_results "
+                "ADD COLUMN organization VARCHAR(250) NOT NULL DEFAULT 'Не указана'"
+            )
+        )
+        db.session.commit()
 
 
 @login_manager.user_loader

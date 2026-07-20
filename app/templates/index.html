@@ -9,5 +9,5 @@
     <div class="card"><b>{{ forecast_count }}</b><span>сохраненных прогнозов</span></div>
     <div class="card"><b>{{ dataset_count }}</b><span>наборов данных</span></div>
 </section>
-{% if latest_forecasts %}<h2>Последние прогнозы</h2><table><tr><th>Программа</th><th>Регион</th><th>Цена</th></tr>{% for f in latest_forecasts %}<tr><td>{{ f.program_name }}</td><td>{{ f.region }}</td><td>{{ '%.2f'|format(f.predicted_price) }}</td></tr>{% endfor %}</table>{% endif %}
+{% if latest_forecasts %}<h2>Последние прогнозы</h2><table><tr><th>Организация</th><th>Направление</th><th>Цена</th></tr>{% for f in latest_forecasts %}<tr><td>{{ f.organization }}</td><td>{{ f.program_name }}</td><td>{{ '%.2f'|format(f.predicted_price) }}</td></tr>{% endfor %}</table>{% endif %}
 {% endblock %}

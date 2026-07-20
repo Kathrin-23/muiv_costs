@@ -1,22 +1,21 @@
-"""Сформировать датасет цен из подтверждаемых открытых источников.
+"""Сформировать датасет цен из мониторинга качества приема НИУ ВШЭ.
 
 Автор: Горячевская Екатерина Николевна
 Тема ВКР: «Анализ и прогнозирование ценообразования на образовательные услуги».
 
-Скрипт загружает опубликованные Роспатентом версии набора платных услуг РГАИС,
-добавляет открытые сведения РУДН о численности студентов по направлениям и
-индекс потребительских цен Всемирного банка. Случайные значения не создаются.
-Все производные признаки описаны в ``data/SOURCES.md``.
+Скрипт загружает детальные таблицы платного приема за 2018–2024 годы. Каждая
+строка таблицы описывает реальный вуз и укрупненную группу направлений. Значения
+не размножаются и не генерируются случайно.
 """
 
 from __future__ import annotations
 
-import csv
 import re
 import sys
 from io import BytesIO
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import requests
 
@@ -24,22 +23,25 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW_PATH = ROOT / "data" / "raw" / "educational_services_prices.csv"
 PROCESSED_PATH = ROOT / "data" / "processed" / "prepared_dataset.csv"
 
-PRICE_SOURCES = {
-    2017: "https://rospatent.gov.ru/opendata/7730176088-paidservices/data-20171019-structure-20171019.csv",
-    2021: "https://rospatent.gov.ru/opendata/7730176088-paidservices/data-20210629-structure-20210629.csv",
-    2022: "https://rospatent.gov.ru/opendata/7730176088-paidservices/data-20220905-structure-20210629.csv",
-    2023: "https://rospatent.gov.ru/opendata/7730176088-paidservices/data-20231004-structure-20210629.csv",
-    2024: "https://rospatent.gov.ru/opendata/7730176088-paidservices/data-20240902-structure-20210629.csv",
+HSE_SOURCES = {
+    2018: "https://ege.hse.ru/ege/rating/2018/77479782/all/",
+    2019: "https://ege.hse.ru/rating/2019/81058609/all/",
+    2020: "https://ege.hse.ru/rating/2020/84025368/all/",
+    2021: "https://ege.hse.ru/ege/rating/2021/87901186/all/",
+    2022: "https://ege.hse.ru/ege/rating/2022/91645099/all/",
+    2023: "https://ege.hse.ru/ege/rating/2023/95405491/all/",
+    2024: "https://ege.hse.ru/ege/rating/2024/98633979/all/",
 }
-STUDENT_SOURCE = "https://opendata.rudn.ru/file/293/data_01072026_structure_01072026.csv"
-CPI_SOURCE = "https://api.worldbank.org/v2/country/RUS/indicator/FP.CPI.TOTL?format=json&per_page=100"
-
-USER_AGENT = "muiv-costs-dataset-builder/1.0"
-REQUEST_TIMEOUT = 60
+CPI_SOURCE = (
+    "https://api.worldbank.org/v2/country/RUS/indicator/"
+    "FP.CPI.TOTL?format=json&per_page=100"
+)
+USER_AGENT = "muiv-costs-dataset-builder/2.0"
+REQUEST_TIMEOUT = 90
 
 
 def download(url: str) -> bytes:
-    """Загрузить источник и проверить HTTP-статус ответа."""
+    """Загрузить открытый источник и проверить HTTP-статус."""
 
     response = requests.get(
         url,
@@ -50,160 +52,80 @@ def download(url: str) -> bytes:
     return response.content
 
 
-def _parse_source_line(line: str) -> tuple[str, str, str, str] | None:
-    """Разобрать обычную или исторически некорректно экранированную CSV-строку."""
+def _find_column(frame: pd.DataFrame, *fragments: str) -> str:
+    """Найти столбец, название которого содержит один из фрагментов."""
 
-    fields = next(csv.reader([line]))
-    if len(fields) >= 4:
-        return tuple(fields[:4])
+    for column in frame.columns:
+        normalized = str(column).lower().replace("ё", "е")
+        if any(fragment.lower().replace("ё", "е") in normalized for fragment in fragments):
+            return column
+    raise ValueError(f"Не найден столбец по фрагментам: {fragments}")
 
-    inner = fields[0]
-    # В версиях 2021–2024 каждая строка дополнительно обернута в кавычки.
-    while inner.endswith(',""'):
-        inner = inner[:-3]
-    parts = inner.rsplit('","', 3)
-    if len(parts) != 4:
+
+def _single_number(value) -> float | None:
+    """Извлечь одно опубликованное число; диапазоны намеренно исключить."""
+
+    if pd.isna(value):
         return None
-    name, education_type, cost, note = parts
-    return (
-        name.strip().strip('"'),
-        education_type.strip().strip('"'),
-        cost.strip().strip('"'),
-        note.strip().strip('"'),
+    normalized = str(value).replace("\xa0", " ").replace(",", ".")
+    numbers = re.findall(r"\d+(?:\.\d+)?", normalized)
+    if len(numbers) != 1:
+        return None
+    return float(numbers[0])
+
+
+def parse_hse_table(content: bytes, year: int, source_url: str) -> pd.DataFrame:
+    """Привести детальную HTML-таблицу НИУ ВШЭ к единой схеме."""
+
+    tables = pd.read_html(BytesIO(content))
+    frame = max(tables, key=len)
+    group_column = _find_column(frame, "укрупнен")
+    organization_column = _find_column(frame, "вуз")
+    score_column = _find_column(frame, "качество приема")
+    students_column = _find_column(
+        frame,
+        "зачислено на платные",
+        "сколько человек зачислено на платные",
     )
+    price_column = _find_column(frame, "стоимость обучения")
 
-
-def parse_price_source(content: bytes, snapshot_year: int, source_url: str) -> list[dict]:
-    """Извлечь отдельную запись для каждой формы обучения и опубликованной цены."""
-
-    text = content.decode("cp1251")
-    rows = []
-    for source_row, line in enumerate(text.splitlines(), start=1):
-        if not line.strip() or line.lower().startswith("name,types,cost,note"):
+    records = []
+    for source_row, row in frame.iterrows():
+        price = _single_number(row[price_column])
+        score = _single_number(row[score_column])
+        students = _single_number(row[students_column])
+        organization = str(row[organization_column]).strip()
+        program_name = str(row[group_column]).strip()
+        if (
+            price is None
+            or score is None
+            or students is None
+            or students <= 0
+            or organization in {"", "nan"}
+            or program_name in {"", "nan"}
+        ):
             continue
-        parsed = _parse_source_line(line)
-        if not parsed:
-            continue
-        name, education_type, cost_text, note = parsed
-        education_level = normalize_education_level(education_type)
-        program_name = normalize_program_name(name)
-        direction_code = extract_direction_code(name)
-        for study_format, price in parse_prices(cost_text):
-            rows.append(
-                {
-                    "year": snapshot_year,
-                    "region": "Москва",
-                    "education_level": education_level,
-                    "program_name": program_name,
-                    "study_format": study_format,
-                    "duration_months": duration_for_level(education_level),
-                    "final_price": price,
-                    "discount_percent": 0.0,
-                    "advertising_spend": 0.0,
-                    "direction_code": direction_code,
-                    "source_title": "Открытые данные Роспатента: платные образовательные услуги РГАИС",
-                    "source_url": source_url,
-                    "source_row": source_row,
-                    "source_note": note,
-                }
-            )
-    return rows
-
-
-def parse_prices(cost_text: str) -> list[tuple[str, float]]:
-    """Преобразовать текстовый перечень цен в пары «форма — цена»."""
-
-    prepared = re.sub(
-        r"\s+(?=(?:очно-заочная|заочная|очная|с применением дистанционных|полный курс))",
-        "; ",
-        cost_text.lower(),
-    )
-    results = []
-    for segment in prepared.split(";"):
-        numbers = re.findall(r"\d[\d ]*(?:,\d+)?", segment)
-        if not numbers:
-            continue
-        price = float(numbers[-1].replace(" ", "").replace(",", "."))
-        if price < 1_000:
-            continue
-        if "дистанцион" in segment:
-            study_format = "дистанционная"
-        elif "очно-заоч" in segment or "очная/очно-заочная" in segment:
-            study_format = "очно-заочная"
-        elif "заоч" in segment:
-            study_format = "заочная"
-        elif "очная" in segment:
-            study_format = "очная"
-        else:
-            study_format = "не указано"
-        results.append((study_format, price))
-    return results
-
-
-def extract_direction_code(name: str) -> str:
-    """Извлечь код направления вида 38.03.02, если он опубликован."""
-
-    match = re.search(r"\b\d{2}\.\d{2}\.\d{2}\b", name)
-    return match.group(0) if match else ""
-
-
-def normalize_program_name(name: str) -> str:
-    """Очистить название услуги от технических кавычек и лишних пробелов."""
-
-    cleaned = re.sub(r"\s+", " ", name.replace('"', "")).strip(" ,.")
-    return cleaned[:240]
-
-
-def normalize_education_level(value: str) -> str:
-    """Привести опубликованный тип программы к категориям приложения."""
-
-    lowered = value.lower()
-    if "бакалавр" in lowered:
-        return "бакалавриат"
-    if "магистр" in lowered:
-        return "магистратура"
-    if "специалитет" in lowered:
-        return "специалитет"
-    if "аспиран" in lowered:
-        return "аспирантура"
-    if "высшее" in lowered:
-        return "высшее образование"
-    return "дополнительное образование"
-
-
-def duration_for_level(level: str) -> int:
-    """Вернуть нормативную продолжительность программы в месяцах."""
-
-    return {
-        "бакалавриат": 48,
-        "магистратура": 24,
-        "специалитет": 60,
-        "аспирантура": 36,
-        "высшее образование": 48,
-        "дополнительное образование": 6,
-    }[level]
-
-
-def load_student_counts() -> dict[str, int]:
-    """Получить численность студентов РУДН по кодам направлений."""
-
-    frame = pd.read_csv(BytesIO(download(STUDENT_SOURCE)), sep=";", encoding="cp1251")
-    code_column = "Шифр направления подготовки"
-    course_columns = [column for column in frame.columns if "курс" in column]
-    for column in course_columns:
-        frame[column] = pd.to_numeric(frame[column], errors="coerce").fillna(0)
-    frame["student_count"] = frame[course_columns].sum(axis=1)
-    return (
-        frame.groupby(code_column)["student_count"]
-        .sum()
-        .round()
-        .astype(int)
-        .to_dict()
-    )
+        # В таблицах цена опубликована в тысячах рублей, несмотря на сокращенный
+        # заголовок некоторых архивных страниц.
+        price_rubles = price * 1000 if price < 10_000 else price
+        records.append(
+            {
+                "year": year,
+                "organization": organization,
+                "program_name": program_name,
+                "student_count": int(students),
+                "admission_score": round(score, 2),
+                "final_price": round(price_rubles, 2),
+                "source_title": "НИУ ВШЭ — Мониторинг качества приема в вузы",
+                "source_url": source_url,
+                "source_row": int(source_row) + 1,
+            }
+        )
+    return pd.DataFrame(records)
 
 
 def load_cpi() -> dict[int, float]:
-    """Загрузить индекс потребительских цен РФ и перебазировать к 2017 году."""
+    """Загрузить ИПЦ РФ и перебазировать значения к 2018 году."""
 
     response = requests.get(
         CPI_SOURCE,
@@ -211,87 +133,112 @@ def load_cpi() -> dict[int, float]:
         headers={"User-Agent": USER_AGENT},
     )
     response.raise_for_status()
-    records = response.json()[1]
     values = {
         int(item["date"]): float(item["value"])
-        for item in records
+        for item in response.json()[1]
         if item["value"] is not None
     }
-    base = values[2017]
+    base = values[2018]
     return {year: round(value / base * 100, 2) for year, value in values.items()}
 
 
+def _aggregate_organization_program_rows(frame: pd.DataFrame) -> pd.DataFrame:
+    """Оставить одно реальное наблюдение на вуз, направление и год."""
+
+    frame["weighted_score"] = frame["admission_score"] * frame["student_count"]
+    grouped = (
+        frame.groupby(
+            ["year", "organization", "program_name", "source_title", "source_url"],
+            as_index=False,
+        )
+        .agg(
+            student_count=("student_count", "sum"),
+            weighted_score=("weighted_score", "sum"),
+            final_price=("final_price", "median"),
+            source_row=("source_row", "min"),
+        )
+    )
+    grouped["admission_score"] = (
+        grouped["weighted_score"] / grouped["student_count"]
+    ).round(2)
+    return grouped.drop(columns="weighted_score")
+
+
+def _add_previous_price(frame: pd.DataFrame) -> pd.DataFrame:
+    """Добавить последнюю опубликованную цену того же вуза и направления."""
+
+    frame = frame.sort_values(["organization", "program_name", "year"])
+    history_group = frame.groupby(["organization", "program_name"])
+    frame["base_price"] = history_group["final_price"].shift(1)
+    frame["base_price_year"] = history_group["year"].shift(1)
+    return frame
+
+
+def _add_competitor_price(frame: pd.DataFrame) -> pd.DataFrame:
+    """Рассчитать медиану цен других вузов без текущей целевой строки."""
+
+    frame = frame.copy()
+    competitor = pd.Series(index=frame.index, dtype=float)
+    for _, indexes in frame.groupby(["year", "program_name"]).groups.items():
+        indexes = list(indexes)
+        if len(indexes) < 2:
+            continue
+        prices = frame.loc[indexes, "final_price"].to_numpy(dtype=float)
+        for position, index in enumerate(indexes):
+            competitor.loc[index] = float(np.median(np.delete(prices, position)))
+    frame["competitor_price"] = competitor.round(2)
+    return frame
+
+
 def build_dataset() -> pd.DataFrame:
-    """Собрать, обогатить и вернуть итоговую таблицу без случайной генерации."""
+    """Собрать реальный временной набор и удалить строки без истории/конкурентов."""
 
-    records = []
-    for year, url in PRICE_SOURCES.items():
-        records.extend(parse_price_source(download(url), year, url))
-    if not records:
-        raise RuntimeError("Из источников не удалось извлечь цены")
+    yearly_frames = [
+        parse_hse_table(download(url), year, url)
+        for year, url in HSE_SOURCES.items()
+    ]
+    frame = pd.concat(yearly_frames, ignore_index=True)
+    frame = _aggregate_organization_program_rows(frame)
+    frame = _add_previous_price(frame)
+    frame["salary_index"] = frame["year"].map(load_cpi())
+    frame = frame.dropna(subset=["base_price", "salary_index"])
+    frame = _add_competitor_price(frame)
+    frame = frame.dropna(subset=["competitor_price"])
+    frame["base_price_year"] = frame["base_price_year"].astype(int)
+    frame = frame[
+        (frame["final_price"] > 0)
+        & (frame["base_price"] > 0)
+        & (frame["competitor_price"] > 0)
+    ]
 
-    frame = pd.DataFrame(records)
-    frame = frame.drop_duplicates(
-        subset=["year", "program_name", "study_format", "final_price", "source_url"]
-    )
-    student_counts = load_student_counts()
-    known_counts = [value for value in student_counts.values() if value > 0]
-    fallback_students = int(pd.Series(known_counts).median())
-    frame["student_count"] = frame["direction_code"].map(student_counts).fillna(fallback_students).astype(int)
-
-    min_students = frame["student_count"].min()
-    max_students = frame["student_count"].max()
-    if min_students == max_students:
-        frame["demand_index"] = 50.0
-    else:
-        frame["demand_index"] = (
-            20
-            + (frame["student_count"] - min_students)
-            / (max_students - min_students)
-            * 80
-        ).round(2)
-
-    cpi = load_cpi()
-    frame["salary_index"] = frame["year"].map(cpi)
-
-    peer_group = ["year", "education_level", "study_format"]
-    frame["competitor_price"] = frame.groupby(peer_group)["final_price"].transform("median")
-    frame["competitor_price"] = frame["competitor_price"].fillna(
-        frame.groupby("year")["final_price"].transform("median")
-    )
-
-    frame = frame.sort_values(["program_name", "study_format", "year", "final_price"])
-    frame["base_price"] = frame.groupby(["program_name", "study_format"])["final_price"].shift(1)
-    frame["base_price"] = frame["base_price"].fillna(frame["competitor_price"])
-
-    ordered_columns = [
+    columns = [
         "year",
-        "region",
-        "education_level",
+        "organization",
         "program_name",
-        "study_format",
-        "duration_months",
         "base_price",
         "competitor_price",
-        "demand_index",
-        "salary_index",
-        "advertising_spend",
-        "discount_percent",
         "student_count",
+        "admission_score",
+        "salary_index",
         "final_price",
-        "direction_code",
+        "base_price_year",
         "source_title",
         "source_url",
         "source_row",
-        "source_note",
     ]
-    return frame[ordered_columns].reset_index(drop=True)
+    return frame[columns].sort_values(
+        ["year", "organization", "program_name"]
+    ).reset_index(drop=True)
 
 
 def main() -> None:
-    """Сохранить исходную таблицу с происхождением и очищенную ML-версию."""
+    """Сохранить исходный набор с происхождением и рабочую ML-версию."""
 
     dataset = build_dataset()
+    if len(dataset) < 1_000:
+        raise RuntimeError(
+            f"После проверок осталось только {len(dataset)} строк; требуется минимум 1000"
+        )
     RAW_PATH.parent.mkdir(parents=True, exist_ok=True)
     PROCESSED_PATH.parent.mkdir(parents=True, exist_ok=True)
     dataset.to_csv(RAW_PATH, index=False, encoding="utf-8-sig")
@@ -299,10 +246,15 @@ def main() -> None:
     sys.path.insert(0, str(ROOT))
     from app.ml_service import normalize_dataset
 
-    normalize_dataset(dataset).to_csv(PROCESSED_PATH, index=False, encoding="utf-8-sig")
-    print(f"Сформировано строк: {len(dataset)}")
-    print(f"Исходный набор: {RAW_PATH}")
-    print(f"Набор для ML: {PROCESSED_PATH}")
+    normalize_dataset(dataset).to_csv(
+        PROCESSED_PATH,
+        index=False,
+        encoding="utf-8-sig",
+    )
+    print(f"Сформировано реальных строк: {len(dataset)}")
+    print(f"Вузов: {dataset['organization'].nunique()}")
+    print(f"Направлений: {dataset['program_name'].nunique()}")
+    print(f"Период: {dataset['year'].min()}–{dataset['year'].max()}")
 
 
 if __name__ == "__main__":

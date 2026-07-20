@@ -3,65 +3,64 @@
 <h1>Аналитический модуль</h1>
 {% if summary %}
 <section class="cards">
-    <div class="card"><b>{{ summary.rows }}</b><span>записей</span></div>
-    <div class="card"><b>{{ summary.min_year }}-{{ summary.max_year }}</b><span>период</span></div>
+    <div class="card"><b>{{ summary.rows }}</b><span>реальных наблюдений</span></div>
+    <div class="card"><b>{{ summary.min_year }}–{{ summary.max_year }}</b><span>период</span></div>
+    <div class="card"><b>{{ summary.organizations }}</b><span>образовательных организаций</span></div>
+    <div class="card"><b>{{ summary.programs }}</b><span>групп направлений</span></div>
     <div class="card"><b>{{ summary.mean_price }}</b><span>средняя цена</span></div>
-    <div class="card"><b>{{ summary.min_price }} / {{ summary.max_price }}</b><span>минимум и максимум</span></div>
-    <div class="card"><b>{{ summary.mean_competitor_price }}</b><span>средняя цена конкурентов</span></div>
-    <div class="card"><b>{{ summary.total_students }}</b><span>заявок</span></div>
+    <div class="card"><b>{{ summary.mean_competitor_price }}</b><span>медиана других вузов</span></div>
 </section>
 {% endif %}
 <div class="actions">
     <a class="button" href="{{ url_for('export_dataset') }}">Скачать XLSX по анализу</a>
     <a class="button ghost" href="{{ url_for('export_analysis_docx') }}">Скачать DOCX по анализу</a>
 </div>
+
 <h2>Динамика цен по годам</h2>
 <table>
-    <tr><th>Год</th><th>Средняя цена</th><th>Рост, %</th><th>Средний спрос</th><th>Цена конкурентов</th><th>Записей</th></tr>
+    <tr><th>Год</th><th>Средняя цена</th><th>Рост, %</th><th>Среднее число зачисленных</th><th>Медиана других вузов</th><th>Наблюдений</th></tr>
     {% for row in dynamics %}
-        <tr><td>{{ row.year }}</td><td>{{ row.mean_price }}</td><td>{{ row.growth_percent }}</td><td>{{ row.mean_demand }}</td><td>{{ row.mean_competitor_price }}</td><td>{{ row.observations }}</td></tr>
+        <tr><td>{{ row.year }}</td><td>{{ row.mean_price }}</td><td>{{ row.growth_percent }}</td><td>{{ row.mean_students }}</td><td>{{ row.mean_competitor_price }}</td><td>{{ row.observations }}</td></tr>
     {% endfor %}
 </table>
+
 <h2>Анализ по направлениям подготовки</h2>
 <table>
-    <tr><th>Направление</th><th>Средняя цена</th><th>Минимум</th><th>Максимум</th><th>Спрос</th><th>Отклонение от конкурентов</th></tr>
+    <tr><th>Направление</th><th>Средняя цена</th><th>Минимум</th><th>Максимум</th><th>Средний балл</th><th>Отклонение от других вузов</th></tr>
     {% for row in by_program %}
-        <tr><td>{{ row.program_name }}</td><td>{{ row.mean_price }}</td><td>{{ row.min_price }}</td><td>{{ row.max_price }}</td><td>{{ row.mean_demand }}</td><td>{{ row.deviation_from_competitors }}</td></tr>
+        <tr><td>{{ row.program_name }}</td><td>{{ row.mean_price }}</td><td>{{ row.min_price }}</td><td>{{ row.max_price }}</td><td>{{ row.mean_admission_score }}</td><td>{{ row.deviation_from_competitors }}</td></tr>
     {% endfor %}
 </table>
-<h2>Анализ по уровню образования</h2>
+
+<h2>30 организаций с наиболее высокой средней ценой</h2>
 <table>
-    <tr><th>Уровень</th><th>Средняя цена</th><th>Минимум</th><th>Максимум</th><th>Спрос</th><th>Записей</th></tr>
-    {% for row in by_level %}
-        <tr><td>{{ row.education_level }}</td><td>{{ row.mean_price }}</td><td>{{ row.min_price }}</td><td>{{ row.max_price }}</td><td>{{ row.mean_demand }}</td><td>{{ row.observations }}</td></tr>
+    <tr><th>Организация</th><th>Средняя цена</th><th>Минимум</th><th>Максимум</th><th>Средний балл</th><th>Наблюдений</th></tr>
+    {% for row in by_organization[:30] %}
+        <tr><td>{{ row.organization }}</td><td>{{ row.mean_price }}</td><td>{{ row.min_price }}</td><td>{{ row.max_price }}</td><td>{{ row.mean_admission_score }}</td><td>{{ row.observations }}</td></tr>
     {% endfor %}
 </table>
-<h2>Анализ по формату обучения</h2>
+
+<h2>Платный прием по направлениям</h2>
 <table>
-    <tr><th>Формат</th><th>Средняя цена</th><th>Минимум</th><th>Максимум</th><th>Цена конкурентов</th><th>Отклонение</th></tr>
-    {% for row in by_format %}
-        <tr><td>{{ row.study_format }}</td><td>{{ row.mean_price }}</td><td>{{ row.min_price }}</td><td>{{ row.max_price }}</td><td>{{ row.mean_competitor_price }}</td><td>{{ row.deviation_from_competitors }}</td></tr>
-    {% endfor %}
-</table>
-<h2>Анализ спроса</h2>
-<table>
-    <tr><th>Программа</th><th>Средняя цена</th><th>Количество заявок</th><th>Индекс спроса</th></tr>
+    <tr><th>Направление</th><th>Средняя цена</th><th>Зачислено</th><th>Средний балл приема</th></tr>
     {% for row in demand %}
-        <tr><td>{{ row.program_name }}</td><td>{{ row.mean_price }}</td><td>{{ row.applications }}</td><td>{{ row.mean_demand }}</td></tr>
+        <tr><td>{{ row.program_name }}</td><td>{{ row.mean_price }}</td><td>{{ row.applications }}</td><td>{{ row.mean_admission_score }}</td></tr>
     {% endfor %}
 </table>
-<h2>Анализ конкурентов</h2>
+
+<h2>Сравнение с другими вузами</h2>
 <table>
-    <tr><th>Год</th><th>Цена услуги</th><th>Цена конкурентов</th><th>Отклонение</th><th>Отклонение, %</th></tr>
+    <tr><th>Год</th><th>Средняя цена</th><th>Медиана других вузов</th><th>Отклонение</th><th>Отклонение, %</th></tr>
     {% for row in competitors %}
         <tr><td>{{ row.year }}</td><td>{{ row.mean_price }}</td><td>{{ row.mean_competitor_price }}</td><td>{{ row.difference }}</td><td>{{ row.difference_percent }}</td></tr>
     {% endfor %}
 </table>
-<h2>Рейтинг программ по спросу</h2>
+
+<h2>Направления с наибольшим платным приемом</h2>
 <table>
-    <tr><th>Программа</th><th>Средняя цена</th><th>Спрос</th><th>Заявки</th></tr>
+    <tr><th>Направление</th><th>Средняя цена</th><th>Средний балл</th><th>Зачислено</th></tr>
     {% for row in rating %}
-        <tr><td>{{ row.program_name }}</td><td>{{ row.mean_price }}</td><td>{{ row.mean_demand }}</td><td>{{ row.students }}</td></tr>
+        <tr><td>{{ row.program_name }}</td><td>{{ row.mean_price }}</td><td>{{ row.mean_admission_score }}</td><td>{{ row.students }}</td></tr>
     {% endfor %}
 </table>
 {% endblock %}

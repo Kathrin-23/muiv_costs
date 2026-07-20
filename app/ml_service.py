@@ -21,46 +21,36 @@ from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, r2_score, root_mean_squared_error
-from sklearn.model_selection import GridSearchCV, KFold, cross_validate, train_test_split
+from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, cross_validate
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 REQUIRED_COLUMNS = [
     "year",
-    "region",
-    "education_level",
+    "organization",
     "program_name",
-    "study_format",
-    "duration_months",
     "base_price",
     "competitor_price",
-    "demand_index",
-    "salary_index",
-    "advertising_spend",
-    "discount_percent",
     "student_count",
+    "admission_score",
+    "salary_index",
     "final_price",
 ]
 
 FEATURE_COLUMNS = [
     "year",
-    "region",
-    "education_level",
+    "organization",
     "program_name",
-    "study_format",
-    "duration_months",
     "base_price",
     "competitor_price",
-    "demand_index",
-    "salary_index",
-    "advertising_spend",
-    "discount_percent",
     "student_count",
+    "admission_score",
+    "salary_index",
 ]
 
 TARGET_COLUMN = "final_price"
-CATEGORICAL_COLUMNS = ["region", "education_level", "program_name", "study_format"]
+CATEGORICAL_COLUMNS = ["organization", "program_name"]
 NUMERIC_COLUMNS = [column for column in FEATURE_COLUMNS if column not in CATEGORICAL_COLUMNS]
 
 MODEL_FILENAMES = {
@@ -91,20 +81,16 @@ MODEL_PARAMETER_GRIDS = {
 
 COLUMN_ALIASES = {
     "Год": "year",
-    "Регион": "region",
-    "Уровень образования": "education_level",
+    "Вуз": "organization",
+    "Образовательная организация": "organization",
     "Название услуги": "program_name",
     "Направление подготовки": "program_name",
-    "Форма обучения": "study_format",
-    "Длительность обучения": "duration_months",
     "Текущая цена": "base_price",
     "Средняя цена конкурентов": "competitor_price",
-    "Количество заявок": "student_count",
-    "Скидка": "discount_percent",
+    "Зачислено на платные места": "student_count",
+    "Средний балл приема": "admission_score",
     "Прогнозная цена": "final_price",
-    "Индекс спроса": "demand_index",
     "Индекс зарплат": "salary_index",
-    "Расходы на продвижение": "advertising_spend",
 }
 
 
@@ -129,22 +115,6 @@ def normalize_dataset(df):
     rename_map = {column: COLUMN_ALIASES.get(column, column) for column in normalized.columns}
     normalized = normalized.rename(columns=rename_map)
     normalized = normalized.loc[:, ~normalized.columns.duplicated()]
-    if "base_price" not in normalized.columns and "final_price" in normalized.columns:
-        normalized["base_price"] = normalized["final_price"]
-    if "final_price" not in normalized.columns and "base_price" in normalized.columns:
-        normalized["final_price"] = normalized["base_price"]
-    if "demand_index" not in normalized.columns and "student_count" in normalized.columns:
-        numeric_students = pd.to_numeric(normalized["student_count"], errors="coerce")
-        min_students = numeric_students.min()
-        max_students = numeric_students.max()
-        if pd.notna(min_students) and pd.notna(max_students) and max_students != min_students:
-            normalized["demand_index"] = 40 + (numeric_students - min_students) / (max_students - min_students) * 60
-        else:
-            normalized["demand_index"] = 65
-    if "salary_index" not in normalized.columns:
-        normalized["salary_index"] = 70
-    if "advertising_spend" not in normalized.columns:
-        normalized["advertising_spend"] = 0
     for column in REQUIRED_COLUMNS:
         if column not in normalized.columns:
             raise ValueError(f"В наборе данных отсутствует обязательный столбец: {column}")
@@ -189,26 +159,27 @@ def build_model(model_name="random_forest"):
 
 
 def split_dataset(df, random_state=42):
-    """Разделить данные на train/validation/test в пропорции 70/15/15."""
+    """Разделить данные строго по времени: прошлые годы / предпоследний / последний."""
 
-    X = df[FEATURE_COLUMNS]
-    y = df[TARGET_COLUMN]
-    X_train, X_temp, y_train, y_temp = train_test_split(
-        X,
-        y,
-        test_size=0.30,
-        random_state=random_state,
-    )
-    X_validation, X_test, y_validation, y_test = train_test_split(
-        X_temp,
-        y_temp,
-        test_size=0.50,
-        random_state=random_state,
-    )
+    del random_state  # параметр оставлен для совместимости с прежним API
+    ordered = df.sort_values("year").reset_index(drop=True)
+    years = sorted(int(year) for year in ordered["year"].unique())
+    if len(years) < 3:
+        raise ValueError("Для временного разбиения требуется минимум три разных года")
+    validation_year = years[-2]
+    test_year = years[-1]
+    train_frame = ordered[ordered["year"] < validation_year]
+    validation_frame = ordered[ordered["year"] == validation_year]
+    test_frame = ordered[ordered["year"] == test_year]
+    if train_frame.empty or validation_frame.empty or test_frame.empty:
+        raise ValueError("Не удалось сформировать непустые временные выборки")
     return {
-        "train": (X_train, y_train),
-        "validation": (X_validation, y_validation),
-        "test": (X_test, y_test),
+        "train": (train_frame[FEATURE_COLUMNS], train_frame[TARGET_COLUMN]),
+        "validation": (
+            validation_frame[FEATURE_COLUMNS],
+            validation_frame[TARGET_COLUMN],
+        ),
+        "test": (test_frame[FEATURE_COLUMNS], test_frame[TARGET_COLUMN]),
     }
 
 
@@ -233,7 +204,7 @@ def _calculate_split_metrics(model, splits):
 def _cross_validation_metrics(model, X_train, y_train):
     """Оценить настроенную модель пятикратной кросс-валидацией."""
 
-    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    cv = TimeSeriesSplit(n_splits=5)
     scores = cross_validate(
         model,
         X_train,
@@ -393,7 +364,7 @@ def _train_experiment(df, model_name, diagnostics_dir=None):
     search = GridSearchCV(
         build_model(model_name),
         MODEL_PARAMETER_GRIDS[model_name],
-        cv=3,
+        cv=TimeSeriesSplit(n_splits=3),
         scoring="neg_root_mean_squared_error",
         n_jobs=-1,
         refit=True,
@@ -431,6 +402,12 @@ def _train_experiment(df, model_name, diagnostics_dir=None):
             "validation": int(len(splits["validation"][0])),
             "test": int(len(splits["test"][0])),
             "dataset": int(len(df)),
+        },
+        "split_years": {
+            split_name: sorted(
+                int(year) for year in values[0]["year"].unique()
+            )
+            for split_name, values in splits.items()
         },
         "diagnostics": diagnostics,
         "trained_at": datetime.now().isoformat(timespec="seconds"),
@@ -586,7 +563,10 @@ def calculate_metrics(y_true, y_pred):
     return {
         "mae": round(float(mean_absolute_error(y_true, y_pred)), 2),
         "rmse": round(float(root_mean_squared_error(y_true, y_pred)), 2),
-        "mape": round(float(mean_absolute_percentage_error(y_true, y_pred)), 4),
+        "mape": round(
+            float(mean_absolute_percentage_error(y_true, y_pred) * 100),
+            2,
+        ),
         "r2": round(float(r2_score(y_true, y_pred)), 4),
     }
 
@@ -611,7 +591,6 @@ def validate_input(payload):
     if errors:
         raise ValueError("; ".join(errors))
     cleaned["year"] = int(cleaned["year"])
-    cleaned["duration_months"] = int(cleaned["duration_months"])
     cleaned["student_count"] = int(cleaned["student_count"])
     return cleaned
 
@@ -633,25 +612,25 @@ def predict_price(model_path, payload, model_name=None):
 
 
 def build_price_recommendation(predicted_price, payload):
+    """Сопоставить прогноз с предыдущей ценой и реальным рыночным ориентиром."""
+
     competitor_price = float(payload.get("competitor_price", predicted_price))
     base_price = float(payload.get("base_price", predicted_price))
-    demand_index = float(payload.get("demand_index", 50))
-    discount = float(payload.get("discount_percent", 0))
     ratio_to_competitor = predicted_price / competitor_price if competitor_price else 1
     ratio_to_base = predicted_price / base_price if base_price else 1
 
-    if ratio_to_competitor > 1.12 and demand_index < 55:
-        return "Рекомендуется ограничить рост цены и усилить скидочные предложения, так как прогноз выше рынка при умеренном спросе."
-    if ratio_to_competitor < 0.92 and demand_index > 70:
-        return "Есть резерв для повышения цены: прогноз ниже уровня конкурентов при повышенном спросе."
-    if discount > 15 and ratio_to_base < 1.0:
-        return "Скидочная политика заметно снижает итоговую цену; требуется проверить экономическую целесообразность акции."
-    if demand_index > 80:
-        return "Спрос высокий, поэтому допустимо аккуратное повышение цены при сохранении конкурентного позиционирования."
+    if ratio_to_competitor > 1.12:
+        return "Прогноз заметно выше медианы других вузов по направлению; перед повышением цены следует проверить конкурентное позиционирование."
+    if ratio_to_competitor < 0.92:
+        return "Прогноз ниже медианы других вузов по направлению; возможно, существует резерв для корректировки цены."
+    if ratio_to_base > 1.15:
+        return "Прогноз предполагает рост более чем на 15% к предыдущей опубликованной цене; требуется дополнительное обоснование."
     return "Прогнозная цена находится в допустимом диапазоне; рекомендуется использовать ее как базовый ориентир для планирования."
 
 
 def dataset_summary(dataset_path):
+    """Вернуть основные характеристики реального набора мониторинга."""
+
     df = read_dataset(dataset_path)
     summary = {
         "rows": int(len(df)),
@@ -663,11 +642,9 @@ def dataset_summary(dataset_path):
         "min_price": round(float(df["final_price"].min()), 2),
         "max_price": round(float(df["final_price"].max()), 2),
         "mean_competitor_price": round(float(df["competitor_price"].mean()), 2),
-        "mean_discount": round(float(df["discount_percent"].mean()), 2),
         "total_students": int(df["student_count"].sum()),
-        "regions": sorted(df["region"].unique().tolist()),
-        "education_levels": sorted(df["education_level"].unique().tolist()),
-        "study_formats": sorted(df["study_format"].unique().tolist()),
+        "organizations": int(df["organization"].nunique()),
+        "programs": int(df["program_name"].nunique()),
     }
     return summary
 
@@ -676,12 +653,12 @@ def price_dynamics(dataset_path):
     df = read_dataset(dataset_path)
     grouped = df.groupby("year", as_index=False).agg(
         mean_price=("final_price", "mean"),
-        mean_demand=("demand_index", "mean"),
+        mean_students=("student_count", "mean"),
         mean_competitor_price=("competitor_price", "mean"),
         observations=("final_price", "count"),
     )
     grouped["mean_price"] = grouped["mean_price"].round(2)
-    grouped["mean_demand"] = grouped["mean_demand"].round(2)
+    grouped["mean_students"] = grouped["mean_students"].round(2)
     grouped["mean_competitor_price"] = grouped["mean_competitor_price"].round(2)
     grouped["growth_percent"] = grouped["mean_price"].pct_change().fillna(0).mul(100).round(2)
     return grouped.to_dict(orient="records")
@@ -691,12 +668,15 @@ def program_rating(dataset_path, limit=10):
     df = read_dataset(dataset_path)
     grouped = df.groupby("program_name", as_index=False).agg(
         mean_price=("final_price", "mean"),
-        mean_demand=("demand_index", "mean"),
+        mean_admission_score=("admission_score", "mean"),
         students=("student_count", "sum"),
     )
     grouped["mean_price"] = grouped["mean_price"].round(2)
-    grouped["mean_demand"] = grouped["mean_demand"].round(2)
-    grouped = grouped.sort_values(["mean_demand", "students"], ascending=False).head(limit)
+    grouped["mean_admission_score"] = grouped["mean_admission_score"].round(2)
+    grouped = grouped.sort_values(
+        ["students", "mean_admission_score"],
+        ascending=False,
+    ).head(limit)
     return grouped.to_dict(orient="records")
 
 
@@ -707,10 +687,16 @@ def category_analysis(dataset_path, column):
         min_price=("final_price", "min"),
         max_price=("final_price", "max"),
         mean_competitor_price=("competitor_price", "mean"),
-        mean_demand=("demand_index", "mean"),
+        mean_admission_score=("admission_score", "mean"),
         observations=("final_price", "count"),
     )
-    for price_column in ["mean_price", "min_price", "max_price", "mean_competitor_price", "mean_demand"]:
+    for price_column in [
+        "mean_price",
+        "min_price",
+        "max_price",
+        "mean_competitor_price",
+        "mean_admission_score",
+    ]:
         grouped[price_column] = grouped[price_column].round(2)
     grouped["deviation_from_competitors"] = (grouped["mean_price"] - grouped["mean_competitor_price"]).round(2)
     grouped = grouped.sort_values("mean_price", ascending=False)
@@ -736,10 +722,10 @@ def demand_analysis(dataset_path):
     grouped = df.groupby("program_name", as_index=False).agg(
         mean_price=("final_price", "mean"),
         applications=("student_count", "sum"),
-        mean_demand=("demand_index", "mean"),
+        mean_admission_score=("admission_score", "mean"),
     )
     grouped["mean_price"] = grouped["mean_price"].round(2)
-    grouped["mean_demand"] = grouped["mean_demand"].round(2)
+    grouped["mean_admission_score"] = grouped["mean_admission_score"].round(2)
     grouped = grouped.sort_values("applications", ascending=False).head(12)
     return grouped.to_dict(orient="records")
 
@@ -760,22 +746,19 @@ def cross_validate_model(dataset_path, model_name="random_forest"):
 
 
 def prepare_forecast_payload_from_service(service, year=None):
+    """Преобразовать карточку услуги в актуальную схему признаков модели."""
+
     latest_price = service.last_price()
     year = year or datetime.now().year + 1
     latest_demand = sorted(service.demand_indicators, key=lambda item: item.year, reverse=True)[0] if service.demand_indicators else None
     latest_competitor = sorted(service.competitor_prices, key=lambda item: item.year, reverse=True)[0] if service.competitor_prices else None
     return {
         "year": year,
-        "region": service.region,
-        "education_level": service.program.education_level,
+        "organization": "Текущая образовательная организация",
         "program_name": service.program.name,
-        "study_format": service.study_format,
-        "duration_months": service.program.duration_months,
         "base_price": latest_price,
         "competitor_price": latest_competitor.price if latest_competitor else latest_price * 0.98,
-        "demand_index": latest_demand.demand_index if latest_demand else 65,
-        "salary_index": latest_demand.salary_index if latest_demand else 70,
-        "advertising_spend": latest_demand.advertising_spend if latest_demand else 120000,
-        "discount_percent": 7,
         "student_count": 60,
+        "admission_score": latest_demand.demand_index if latest_demand else 65,
+        "salary_index": latest_demand.salary_index if latest_demand else 160,
     }

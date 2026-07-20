@@ -9,9 +9,9 @@
 </div>
 <h2>Сохраненные прогнозы</h2>
 <table>
-    <tr><th>Дата</th><th>Программа</th><th>Регион</th><th>Модель</th><th>Цена</th><th>Рекомендация</th></tr>
+    <tr><th>Дата</th><th>Организация</th><th>Направление</th><th>Модель</th><th>Цена</th><th>Рекомендация</th></tr>
     {% for f in forecasts %}
-        <tr><td>{{ f.created_at.strftime('%d.%m.%Y') }}</td><td>{{ f.program_name }}</td><td>{{ f.region }}</td><td>{{ f.model_name }}</td><td>{{ '%.2f'|format(f.predicted_price) }}</td><td>{{ f.recommendation }}</td></tr>
+        <tr><td>{{ f.created_at.strftime('%d.%m.%Y') }}</td><td>{{ f.organization }}</td><td>{{ f.program_name }}</td><td>{{ f.model_name }}</td><td>{{ '%.2f'|format(f.predicted_price) }}</td><td>{{ f.recommendation }}</td></tr>
     {% else %}
         <tr><td colspan="6">Нет сохраненных прогнозов.</td></tr>
     {% endfor %}

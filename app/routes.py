@@ -445,21 +445,22 @@ def price_analysis():
         summary = dataset_summary(Config.PROCESSED_DATASET_PATH)
         dynamics = price_dynamics(Config.PROCESSED_DATASET_PATH)
         rating = program_rating(Config.PROCESSED_DATASET_PATH)
-        by_level = category_analysis(Config.PROCESSED_DATASET_PATH, "education_level")
-        by_format = category_analysis(Config.PROCESSED_DATASET_PATH, "study_format")
+        by_organization = category_analysis(
+            Config.PROCESSED_DATASET_PATH,
+            "organization",
+        )
         by_program = category_analysis(Config.PROCESSED_DATASET_PATH, "program_name")
         competitors = competitor_analysis(Config.PROCESSED_DATASET_PATH)
         demand = demand_analysis(Config.PROCESSED_DATASET_PATH)
     except Exception as exc:
-        summary, dynamics, rating, by_level, by_format, by_program, competitors, demand = {}, [], [], [], [], [], [], []
+        summary, dynamics, rating, by_organization, by_program, competitors, demand = {}, [], [], [], [], [], []
         flash(f"Не удалось выполнить анализ набора данных: {exc}", "danger")
     return render_template(
         "price_analysis.html",
         summary=summary,
         dynamics=dynamics,
         rating=rating,
-        by_level=by_level,
-        by_format=by_format,
+        by_organization=by_organization,
         by_program=by_program,
         competitors=competitors,
         demand=demand,
@@ -485,10 +486,11 @@ def forecast():
             record = ForecastResult(
                 created_by=current_user.id,
                 year=result["input"]["year"],
-                region=result["input"]["region"],
-                education_level=result["input"]["education_level"],
+                organization=result["input"]["organization"],
+                region="не используется моделью",
+                education_level="не используется моделью",
                 program_name=result["input"]["program_name"],
-                study_format=result["input"]["study_format"],
+                study_format="не используется моделью",
                 input_payload=json.dumps(result["input"], ensure_ascii=False),
                 model_name=selected_model,
                 predicted_price=result["predicted_price"],
@@ -528,10 +530,11 @@ def forecast_service(service_id):
             service_id=service.id,
             created_by=current_user.id,
             year=result["input"]["year"],
-            region=result["input"]["region"],
-            education_level=result["input"]["education_level"],
+            organization=result["input"]["organization"],
+            region="не используется моделью",
+            education_level="не используется моделью",
             program_name=result["input"]["program_name"],
-            study_format=result["input"]["study_format"],
+            study_format="не используется моделью",
             input_payload=json.dumps(result["input"], ensure_ascii=False),
             model_name=model_name,
             predicted_price=result["predicted_price"],
@@ -632,9 +635,9 @@ def export_analysis_docx():
         summary = dataset_summary(Config.PROCESSED_DATASET_PATH)
         dynamics = price_dynamics(Config.PROCESSED_DATASET_PATH)
         rating = program_rating(Config.PROCESSED_DATASET_PATH)
-        by_format = category_analysis(Config.PROCESSED_DATASET_PATH, "study_format")
+        by_organization = category_analysis(Config.PROCESSED_DATASET_PATH, "organization")
         competitors = competitor_analysis(Config.PROCESSED_DATASET_PATH)
-        path = export_dataset_summary_to_docx(Config.EXPORT_FOLDER, summary, dynamics, rating, by_format, competitors)
+        path = export_dataset_summary_to_docx(Config.EXPORT_FOLDER, summary, dynamics, rating, by_organization, competitors)
         report = ReportFile(created_by=current_user.id, filename=path.name, report_type="analysis_docx", file_path=str(path))
         db.session.add(report)
         db.session.commit()

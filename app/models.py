@@ -254,6 +254,7 @@ class ForecastResult(db.Model):
     service_id = db.Column(db.Integer, db.ForeignKey("educational_services.id"), nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     year = db.Column(db.Integer, nullable=False)
+    organization = db.Column(db.String(250), nullable=False, default="Не указана")
     region = db.Column(db.String(120), nullable=False)
     education_level = db.Column(db.String(120), nullable=False)
     program_name = db.Column(db.String(200), nullable=False)
@@ -271,6 +272,7 @@ class ForecastResult(db.Model):
         return {
             "id": self.id,
             "year": self.year,
+            "organization": self.organization,
             "region": self.region,
             "education_level": self.education_level,
             "program_name": self.program_name,

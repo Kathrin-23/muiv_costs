@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Сравнительное обучение моделей</h1>
-<p class="hint">Одна команда выполняет разбиение train/validation/test, подбор гиперпараметров, кросс-валидацию, обучение и сохранение трех моделей.</p>
+<p class="hint">Одна команда выполняет временное разбиение train/validation/test, подбор гиперпараметров, временную кросс-валидацию, обучение и сохранение трех моделей.</p>
 <form method="post" class="form">
     <button>Обучить и сравнить все модели</button>
 </form>
@@ -22,7 +22,7 @@
         <th>Выборка</th>
         <th>MAE</th>
         <th>RMSE</th>
-        <th>MAPE</th>
+        <th>MAPE, %</th>
         <th>R²</th>
         <th>CV MAE</th>
         <th>Время, сек.</th>
@@ -39,7 +39,7 @@
             <td>{{ {'train':'обучающая', 'validation':'валидационная', 'test':'тестовая'}[split_name] }}</td>
             <td>{{ split_metrics.mae }}</td>
             <td>{{ split_metrics.rmse }}</td>
-            <td>{{ split_metrics.mape }}</td>
+            <td>{{ split_metrics.mape }} %</td>
             <td>{{ split_metrics.r2 }}</td>
             {% if loop.first %}
             <td rowspan="3">{{ report.cross_validation.mae_mean }} ± {{ report.cross_validation.mae_std }}</td>
@@ -55,6 +55,9 @@
 <section class="card">
     <h2>{{ report.display_name }}</h2>
     <p><b>Лучшие параметры:</b> {{ report.best_params }}</p>
+    <p><b>Периоды:</b> train {{ report.split_years.train }},
+        validation {{ report.split_years.validation }},
+        test {{ report.split_years.test }}.</p>
     <p><b>Кросс-валидация:</b> MAE {{ report.cross_validation.mae_mean }},
         RMSE {{ report.cross_validation.rmse_mean }}, R² {{ report.cross_validation.r2_mean }}
         ({{ report.cross_validation.folds }} блоков).</p>
