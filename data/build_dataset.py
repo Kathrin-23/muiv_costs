@@ -171,6 +171,8 @@ def _add_previous_price(frame: pd.DataFrame) -> pd.DataFrame:
     history_group = frame.groupby(["organization", "program_name"])
     frame["base_price"] = history_group["final_price"].shift(1)
     frame["base_price_year"] = history_group["year"].shift(1)
+    frame["base_price_source_url"] = history_group["source_url"].shift(1)
+    frame["base_price_source_row"] = history_group["source_row"].shift(1)
     return frame
 
 
@@ -222,6 +224,8 @@ def build_dataset() -> pd.DataFrame:
         "salary_index",
         "final_price",
         "base_price_year",
+        "base_price_source_url",
+        "base_price_source_row",
         "source_title",
         "source_url",
         "source_row",
