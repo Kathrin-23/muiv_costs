@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Загрузка набора данных</h1>
-<p class="hint">Файл проверяется на обязательные столбцы, числовые поля очищаются, затем обработанная версия сохраняется для анализа и прогнозирования.</p>
+<p class="hint">Укажите файл или прямую HTTP(S)-ссылку на CSV/XLSX. Набор проверяется, очищается и сохраняется для анализа и прогнозирования.</p>
 <form method="post" enctype="multipart/form-data" class="form">
-    <label>Файл CSV/XLSX<input type="file" name="dataset" accept=".csv,.xlsx" required></label>
+    <label>Файл CSV/XLSX<input type="file" name="dataset" accept=".csv,.xlsx"></label>
+    <div class="hint">или</div>
+    <label>Ссылка на CSV/XLSX
+        <input type="url" name="dataset_url" placeholder="https://example.org/dataset.csv">
+    </label>
     <label>Описание<textarea name="description"></textarea></label>
     <button>Загрузить</button>
 </form>

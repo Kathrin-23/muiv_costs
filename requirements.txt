@@ -9,3 +9,4 @@ joblib==1.4.2
 openpyxl==3.1.5
 python-docx==1.1.2
 pytest==8.2.2
+requests==2.32.3

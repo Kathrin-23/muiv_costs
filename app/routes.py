@@ -7,7 +7,11 @@ from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.security import check_password_hash
 
 from app import db, make_password_hash
-from app.file_service import copy_dataset_to_processed, save_uploaded_file
+from app.file_service import (
+    copy_dataset_to_processed,
+    download_dataset_from_url,
+    save_uploaded_file,
+)
 from app.ml_service import (
     category_analysis,
     competitor_analysis,
@@ -370,17 +374,35 @@ def price_management():
 @login_required
 @role_required("admin", "analyst")
 def upload_dataset():
+    """Принять набор данных из файла или по ссылке и подготовить его для ML."""
+
     datasets = DatasetFile.query.order_by(DatasetFile.uploaded_at.desc()).all()
     preview_rows, preview_columns = [], []
     if request.method == "POST":
         try:
+            dataset_url = request.form.get("dataset_url", "").strip()
             file = request.files.get("dataset")
-            saved_path, row_count = save_uploaded_file(file, Config.UPLOAD_FOLDER)
+            if dataset_url:
+                saved_path, row_count = download_dataset_from_url(
+                    dataset_url,
+                    Config.UPLOAD_FOLDER,
+                    max_bytes=Config.MAX_CONTENT_LENGTH,
+                )
+                original_name = dataset_url
+            else:
+                saved_path, row_count = save_uploaded_file(file, Config.UPLOAD_FOLDER)
+                original_name = file.filename
             copy_dataset_to_processed(saved_path, Config.PROCESSED_DATASET_PATH)
-            dataset = DatasetFile(filename=saved_path.name, original_name=file.filename, row_count=row_count, status="загружен", description=request.form.get("description", ""))
+            dataset = DatasetFile(
+                filename=saved_path.name,
+                original_name=original_name,
+                row_count=row_count,
+                status="загружен",
+                description=request.form.get("description", ""),
+            )
             db.session.add(dataset)
             db.session.commit()
-            flash("Набор данных загружен и сохранен для дальнейшего анализа.", "success")
+            flash("Набор данных загружен и подготовлен для дальнейшего анализа.", "success")
             return redirect(url_for("upload_dataset"))
         except Exception as exc:
             db.session.rollback()
