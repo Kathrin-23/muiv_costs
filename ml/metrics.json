@@ -1,9 +1,9 @@
 {
-  "mae": 13825.62,
-  "rmse": 22196.23,
-  "mape": 0.2691,
-  "r2": 0.9391,
-  "model_name": "ridge",
-  "dataset_rows": 691,
-  "trained_at": "2026-07-20T23:27:53"
+  "mae": 16379.84,
+  "rmse": 28786.25,
+  "mape": 8.38,
+  "r2": 0.9104,
+  "model_name": "random_forest",
+  "dataset_rows": 24164,
+  "trained_at": "2026-07-21T00:26:05"
 }

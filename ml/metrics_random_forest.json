@@ -2,51 +2,65 @@
   "model_name": "random_forest",
   "display_name": "Случайный лес",
   "best_params": {
-    "max_depth": 8,
+    "max_depth": 10,
     "min_samples_leaf": 1,
-    "n_estimators": 180
+    "n_estimators": 80
   },
   "metrics": {
     "train": {
-      "mae": 10345.32,
-      "rmse": 19422.84,
-      "mape": 0.5051,
-      "r2": 0.9538
+      "mae": 8061.84,
+      "rmse": 12650.42,
+      "mape": 5.51,
+      "r2": 0.9712
     },
     "validation": {
-      "mae": 16288.24,
-      "rmse": 43255.33,
-      "mape": 0.4319,
-      "r2": 0.7408
+      "mae": 14862.84,
+      "rmse": 26716.11,
+      "mape": 7.84,
+      "r2": 0.9161
     },
     "test": {
-      "mae": 16155.32,
-      "rmse": 42768.16,
-      "mape": 0.5009,
-      "r2": 0.7741
+      "mae": 16379.84,
+      "rmse": 28786.25,
+      "mape": 8.38,
+      "r2": 0.9104
     }
   },
   "cross_validation": {
     "folds": 5,
-    "mae_mean": 15305.2,
-    "mae_std": 3160.11,
-    "rmse_mean": 37047.18,
-    "rmse_std": 13812.88,
-    "r2_mean": 0.808,
-    "r2_std": 0.1216
+    "mae_mean": 10931.53,
+    "mae_std": 1222.93,
+    "rmse_mean": 19742.09,
+    "rmse_std": 3241.1,
+    "r2_mean": 0.9322,
+    "r2_std": 0.018
   },
   "overfitting": {
     "detected": true,
-    "r2_gap": 0.213,
-    "validation_to_train_rmse": 2.227,
+    "r2_gap": 0.0551,
+    "validation_to_train_rmse": 2.1119,
     "conclusion": "Есть признаки переобучения: качество на обучающей выборке заметно выше качества на валидационной выборке."
   },
-  "duration_seconds": 4.591,
+  "duration_seconds": 20.566,
   "rows": {
-    "train": 483,
-    "validation": 104,
-    "test": 104,
-    "dataset": 691
+    "train": 16175,
+    "validation": 3912,
+    "test": 4077,
+    "dataset": 24164
+  },
+  "split_years": {
+    "train": [
+      2019,
+      2020,
+      2021,
+      2022
+    ],
+    "validation": [
+      2023
+    ],
+    "test": [
+      2024
+    ]
   },
   "diagnostics": {
     "actual_vs_predicted": "random_forest_actual_vs_predicted.png",
@@ -56,6 +70,6 @@
     "feature_importance_json": "random_forest_feature_importance.json",
     "feature_importance": "random_forest_feature_importance.png"
   },
-  "trained_at": "2026-07-20T23:27:51",
+  "trained_at": "2026-07-21T00:26:05",
   "model_path": "model_random_forest.pkl"
 }

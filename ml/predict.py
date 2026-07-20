@@ -14,19 +14,14 @@ from app.ml_service import model_path_for, predict_price, selected_model_name
 from config import Config
 
 payload = {
-    "year": 2027,
-    "region": "Москва",
-    "education_level": "бакалавриат",
-    "program_name": "Искусственный интеллект и анализ данных",
-    "study_format": "дистанционная",
-    "duration_months": 48,
-    "base_price": 150000,
-    "competitor_price": 145000,
-    "demand_index": 72,
-    "salary_index": 76,
-    "advertising_spend": 160000,
-    "discount_percent": 8,
-    "student_count": 75,
+    "year": 2025,
+    "organization": "НИУ ВШЭ, г. Москва",
+    "program_name": "Экономика",
+    "base_price": 350000,
+    "competitor_price": 230000,
+    "student_count": 100,
+    "admission_score": 75,
+    "salary_index": 163.6,
 }
 
 if __name__ == "__main__":

@@ -2,51 +2,65 @@
   "model_name": "gradient_boosting",
   "display_name": "Градиентный бустинг",
   "best_params": {
-    "learning_rate": 0.1,
-    "max_depth": 2,
-    "n_estimators": 180
+    "learning_rate": 0.05,
+    "max_depth": 3,
+    "n_estimators": 100
   },
   "metrics": {
     "train": {
-      "mae": 9903.14,
-      "rmse": 16245.22,
-      "mape": 0.4075,
-      "r2": 0.9677
+      "mae": 9742.52,
+      "rmse": 17308.21,
+      "mape": 6.67,
+      "r2": 0.9462
     },
     "validation": {
-      "mae": 16160.91,
-      "rmse": 36354.0,
-      "mape": 0.3994,
-      "r2": 0.8169
+      "mae": 15338.68,
+      "rmse": 29243.17,
+      "mape": 7.99,
+      "r2": 0.8994
     },
     "test": {
-      "mae": 14894.92,
-      "rmse": 35060.06,
-      "mape": 0.3594,
-      "r2": 0.8482
+      "mae": 16444.87,
+      "rmse": 29510.58,
+      "mape": 8.31,
+      "r2": 0.9059
     }
   },
   "cross_validation": {
     "folds": 5,
-    "mae_mean": 16915.05,
-    "mae_std": 2109.41,
-    "rmse_mean": 37315.04,
-    "rmse_std": 8219.88,
-    "r2_mean": 0.8221,
-    "r2_std": 0.0651
+    "mae_mean": 11470.98,
+    "mae_std": 1338.83,
+    "rmse_mean": 20662.05,
+    "rmse_std": 3401.89,
+    "r2_mean": 0.9249,
+    "r2_std": 0.023
   },
   "overfitting": {
     "detected": true,
-    "r2_gap": 0.1508,
-    "validation_to_train_rmse": 2.2378,
+    "r2_gap": 0.0468,
+    "validation_to_train_rmse": 1.6896,
     "conclusion": "Есть признаки переобучения: качество на обучающей выборке заметно выше качества на валидационной выборке."
   },
-  "duration_seconds": 0.981,
+  "duration_seconds": 7.18,
   "rows": {
-    "train": 483,
-    "validation": 104,
-    "test": 104,
-    "dataset": 691
+    "train": 16175,
+    "validation": 3912,
+    "test": 4077,
+    "dataset": 24164
+  },
+  "split_years": {
+    "train": [
+      2019,
+      2020,
+      2021,
+      2022
+    ],
+    "validation": [
+      2023
+    ],
+    "test": [
+      2024
+    ]
   },
   "diagnostics": {
     "actual_vs_predicted": "gradient_boosting_actual_vs_predicted.png",
@@ -56,6 +70,6 @@
     "feature_importance_json": "gradient_boosting_feature_importance.json",
     "feature_importance": "gradient_boosting_feature_importance.png"
   },
-  "trained_at": "2026-07-20T23:27:52",
+  "trained_at": "2026-07-21T00:26:12",
   "model_path": "model_gradient_boosting.pkl"
 }

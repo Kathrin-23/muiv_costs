@@ -18,7 +18,7 @@ class Config:
     UPLOAD_FOLDER = str(UPLOAD_DIR)
     EXPORT_FOLDER = str(EXPORT_DIR)
     # Совместимый путь по умолчанию; интерфейс выбирает модель через реестр.
-    MODEL_PATH = str(MODEL_ARTIFACT_DIR / "model_ridge.pkl")
+    MODEL_PATH = str(MODEL_ARTIFACT_DIR / "model_random_forest.pkl")
     MODEL_DIR = str(MODEL_ARTIFACT_DIR)
     MODEL_REGISTRY_PATH = str(MODEL_ARTIFACT_DIR / "model_registry.json")
     MODEL_COMPARISON_PATH = str(MODEL_ARTIFACT_DIR / "model_comparison.csv")

@@ -1,57 +1,71 @@
 {
-  "generated_at": "2026-07-20T23:27:53",
+  "generated_at": "2026-07-21T00:26:12",
   "selection_metric": "validation.rmse",
-  "selected_model": "ridge",
+  "selected_model": "random_forest",
   "models": {
     "random_forest": {
       "model_name": "random_forest",
       "display_name": "Случайный лес",
       "best_params": {
-        "max_depth": 8,
+        "max_depth": 10,
         "min_samples_leaf": 1,
-        "n_estimators": 180
+        "n_estimators": 80
       },
       "metrics": {
         "train": {
-          "mae": 10345.32,
-          "rmse": 19422.84,
-          "mape": 0.5051,
-          "r2": 0.9538
+          "mae": 8061.84,
+          "rmse": 12650.42,
+          "mape": 5.51,
+          "r2": 0.9712
         },
         "validation": {
-          "mae": 16288.24,
-          "rmse": 43255.33,
-          "mape": 0.4319,
-          "r2": 0.7408
+          "mae": 14862.84,
+          "rmse": 26716.11,
+          "mape": 7.84,
+          "r2": 0.9161
         },
         "test": {
-          "mae": 16155.32,
-          "rmse": 42768.16,
-          "mape": 0.5009,
-          "r2": 0.7741
+          "mae": 16379.84,
+          "rmse": 28786.25,
+          "mape": 8.38,
+          "r2": 0.9104
         }
       },
       "cross_validation": {
         "folds": 5,
-        "mae_mean": 15305.2,
-        "mae_std": 3160.11,
-        "rmse_mean": 37047.18,
-        "rmse_std": 13812.88,
-        "r2_mean": 0.808,
-        "r2_std": 0.1216
+        "mae_mean": 10931.53,
+        "mae_std": 1222.93,
+        "rmse_mean": 19742.09,
+        "rmse_std": 3241.1,
+        "r2_mean": 0.9322,
+        "r2_std": 0.018
       },
       "overfitting": {
         "detected": true,
-        "r2_gap": 0.213,
-        "validation_to_train_rmse": 2.227,
+        "r2_gap": 0.0551,
+        "validation_to_train_rmse": 2.1119,
         "conclusion": "Есть признаки переобучения: качество на обучающей выборке заметно выше качества на валидационной выборке."
       },
-      "duration_seconds": 4.591,
+      "duration_seconds": 20.566,
       "rows": {
-        "train": 483,
-        "validation": 104,
-        "test": 104,
-        "dataset": 691
+        "train": 16175,
+        "validation": 3912,
+        "test": 4077,
+        "dataset": 24164
+      },
+      "split_years": {
+        "train": [
+          2019,
+          2020,
+          2021,
+          2022
+        ],
+        "validation": [
+          2023
+        ],
+        "test": [
+          2024
+        ]
       },
       "diagnostics": {
         "actual_vs_predicted": "random_forest_actual_vs_predicted.png",
@@ -61,58 +75,72 @@
         "feature_importance_json": "random_forest_feature_importance.json",
         "feature_importance": "random_forest_feature_importance.png"
       },
-      "trained_at": "2026-07-20T23:27:51",
+      "trained_at": "2026-07-21T00:26:05",
       "model_path": "model_random_forest.pkl"
     },
     "gradient_boosting": {
       "model_name": "gradient_boosting",
       "display_name": "Градиентный бустинг",
       "best_params": {
-        "learning_rate": 0.1,
-        "max_depth": 2,
-        "n_estimators": 180
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "n_estimators": 100
       },
       "metrics": {
         "train": {
-          "mae": 9903.14,
-          "rmse": 16245.22,
-          "mape": 0.4075,
-          "r2": 0.9677
+          "mae": 9742.52,
+          "rmse": 17308.21,
+          "mape": 6.67,
+          "r2": 0.9462
         },
         "validation": {
-          "mae": 16160.91,
-          "rmse": 36354.0,
-          "mape": 0.3994,
-          "r2": 0.8169
+          "mae": 15338.68,
+          "rmse": 29243.17,
+          "mape": 7.99,
+          "r2": 0.8994
         },
         "test": {
-          "mae": 14894.92,
-          "rmse": 35060.06,
-          "mape": 0.3594,
-          "r2": 0.8482
+          "mae": 16444.87,
+          "rmse": 29510.58,
+          "mape": 8.31,
+          "r2": 0.9059
         }
       },
       "cross_validation": {
         "folds": 5,
-        "mae_mean": 16915.05,
-        "mae_std": 2109.41,
-        "rmse_mean": 37315.04,
-        "rmse_std": 8219.88,
-        "r2_mean": 0.8221,
-        "r2_std": 0.0651
+        "mae_mean": 11470.98,
+        "mae_std": 1338.83,
+        "rmse_mean": 20662.05,
+        "rmse_std": 3401.89,
+        "r2_mean": 0.9249,
+        "r2_std": 0.023
       },
       "overfitting": {
         "detected": true,
-        "r2_gap": 0.1508,
-        "validation_to_train_rmse": 2.2378,
+        "r2_gap": 0.0468,
+        "validation_to_train_rmse": 1.6896,
         "conclusion": "Есть признаки переобучения: качество на обучающей выборке заметно выше качества на валидационной выборке."
       },
-      "duration_seconds": 0.981,
+      "duration_seconds": 7.18,
       "rows": {
-        "train": 483,
-        "validation": 104,
-        "test": 104,
-        "dataset": 691
+        "train": 16175,
+        "validation": 3912,
+        "test": 4077,
+        "dataset": 24164
+      },
+      "split_years": {
+        "train": [
+          2019,
+          2020,
+          2021,
+          2022
+        ],
+        "validation": [
+          2023
+        ],
+        "test": [
+          2024
+        ]
       },
       "diagnostics": {
         "actual_vs_predicted": "gradient_boosting_actual_vs_predicted.png",
@@ -122,56 +150,70 @@
         "feature_importance_json": "gradient_boosting_feature_importance.json",
         "feature_importance": "gradient_boosting_feature_importance.png"
       },
-      "trained_at": "2026-07-20T23:27:52",
+      "trained_at": "2026-07-21T00:26:12",
       "model_path": "model_gradient_boosting.pkl"
     },
     "ridge": {
       "model_name": "ridge",
       "display_name": "Гребневая регрессия Ridge",
       "best_params": {
-        "alpha": 0.1
+        "alpha": 100.0
       },
       "metrics": {
         "train": {
-          "mae": 8990.68,
-          "rmse": 16342.05,
-          "mape": 0.205,
-          "r2": 0.9673
+          "mae": 9902.1,
+          "rmse": 18686.47,
+          "mape": 6.48,
+          "r2": 0.9372
         },
         "validation": {
-          "mae": 15472.76,
-          "rmse": 25561.46,
-          "mape": 0.4719,
-          "r2": 0.9095
+          "mae": 14969.16,
+          "rmse": 29160.66,
+          "mape": 7.73,
+          "r2": 0.9
         },
         "test": {
-          "mae": 13825.62,
-          "rmse": 22196.23,
-          "mape": 0.2691,
-          "r2": 0.9391
+          "mae": 15681.9,
+          "rmse": 28549.28,
+          "mape": 8.0,
+          "r2": 0.9119
         }
       },
       "cross_validation": {
         "folds": 5,
-        "mae_mean": 16662.39,
-        "mae_std": 1048.85,
-        "rmse_mean": 29533.48,
-        "rmse_std": 4935.29,
-        "r2_mean": 0.8871,
-        "r2_std": 0.0358
+        "mae_mean": 12862.72,
+        "mae_std": 3546.04,
+        "rmse_mean": 20373.96,
+        "rmse_std": 3816.58,
+        "r2_mean": 0.9274,
+        "r2_std": 0.0226
       },
       "overfitting": {
         "detected": true,
-        "r2_gap": 0.0578,
-        "validation_to_train_rmse": 1.5642,
+        "r2_gap": 0.0372,
+        "validation_to_train_rmse": 1.5605,
         "conclusion": "Есть признаки переобучения: качество на обучающей выборке заметно выше качества на валидационной выборке."
       },
-      "duration_seconds": 0.568,
+      "duration_seconds": 0.576,
       "rows": {
-        "train": 483,
-        "validation": 104,
-        "test": 104,
-        "dataset": 691
+        "train": 16175,
+        "validation": 3912,
+        "test": 4077,
+        "dataset": 24164
+      },
+      "split_years": {
+        "train": [
+          2019,
+          2020,
+          2021,
+          2022
+        ],
+        "validation": [
+          2023
+        ],
+        "test": [
+          2024
+        ]
       },
       "diagnostics": {
         "actual_vs_predicted": "ridge_actual_vs_predicted.png",
@@ -181,7 +223,7 @@
         "feature_importance_json": "ridge_feature_importance.json",
         "feature_importance": "ridge_feature_importance.png"
       },
-      "trained_at": "2026-07-20T23:27:53",
+      "trained_at": "2026-07-21T00:26:12",
       "model_path": "model_ridge.pkl"
     }
   }

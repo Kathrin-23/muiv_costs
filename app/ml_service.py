@@ -65,8 +65,8 @@ MODEL_DISPLAY_NAMES = {
 }
 MODEL_PARAMETER_GRIDS = {
     "random_forest": {
-        "regressor__n_estimators": [100, 180],
-        "regressor__max_depth": [8, None],
+        "regressor__n_estimators": [80, 120],
+        "regressor__max_depth": [10, 16],
         "regressor__min_samples_leaf": [1, 3],
     },
     "gradient_boosting": {
