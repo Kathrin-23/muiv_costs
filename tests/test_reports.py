@@ -41,6 +41,37 @@ def test_dataset_upload_and_preview(app_instance, monkeypatch, tmp_path):
     assert processed.exists()
 
 
+def test_dataset_upload_by_url_route(app_instance, monkeypatch, tmp_path):
+    """Маршрут принимает URL и оставляет локальную обработку общей."""
+
+    source = tmp_path / "from_url.csv"
+    processed = tmp_path / "processed_from_url.csv"
+    source.write_text(
+        "year,region,education_level,program_name,study_format,duration_months,"
+        "base_price,competitor_price,demand_index,salary_index,advertising_spend,"
+        "discount_percent,student_count,final_price\n"
+        "2026,Москва,бакалавриат,URL программа,очная,48,100000,98000,70,75,0,0,80,105000\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(Config, "PROCESSED_DATASET_PATH", str(processed))
+    monkeypatch.setattr(
+        "app.routes.download_dataset_from_url",
+        lambda url, folder, max_bytes: (source, 1),
+    )
+    client = app_instance.test_client()
+    login(client, "analyst", "analyst123")
+
+    response = client.post(
+        "/upload-dataset",
+        data={"dataset_url": "https://example.org/prices.csv", "description": "URL"},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert "https://example.org/prices.csv".encode("utf-8") in response.data
+    assert processed.exists()
+
+
 def test_export_report_and_admin_pages(app_instance):
     client = app_instance.test_client()
     login(client, "admin", "admin123")

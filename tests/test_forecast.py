@@ -1,4 +1,5 @@
 from app.ml_service import predict_price
+from app.models import ForecastResult
 from config import Config
 from tests.test_auth import login
 
@@ -30,10 +31,17 @@ def test_forecast_page_saves_result_and_cabinet_shows_it(app_instance):
     client = app_instance.test_client()
     login(client, "analyst", "analyst123")
 
-    response = client.post("/forecast", data=FORECAST_PAYLOAD, follow_redirects=True)
+    payload = {**FORECAST_PAYLOAD, "model_name": "gradient_boosting"}
+    response = client.post("/forecast", data=payload, follow_redirects=True)
     assert response.status_code == 200
     assert "Прогнозная цена".encode("utf-8") in response.data
+    assert "Градиентный бустинг".encode("utf-8") in response.data
+
+    with app_instance.app_context():
+        saved = ForecastResult.query.order_by(ForecastResult.id.desc()).first()
+        assert saved.model_name == "gradient_boosting"
 
     response = client.get("/dashboard/forecasts")
     assert response.status_code == 200
     assert "Искусственный интеллект".encode("utf-8") in response.data
+    assert b"gradient_boosting" in response.data
